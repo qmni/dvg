@@ -1,3 +1,6 @@
+import pika
+import json
+
 def main():
     print("Willkommen im Rechnungs-Client von Team 8!")
 
@@ -26,9 +29,37 @@ def main():
             print("\nZahlung veranlassen:")
             rechnungsnummer = input("Welche Rechnungsnummer soll bezahlt werden?: ")
 
-            # HIER KOMMT SPÄTER DER RABBITMQ CODE HIN!
-            
-            print("ERFOLG: Zahlungsauftrag für Rechnung " + rechnungsnummer + " würde jetzt an RabbitMQ gesendet werden!")
+            try:
+                # Verbindung zum lokalen RabbitMQ-Broker herstellen
+                connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+                # Kommunikationskanal für die Session öffnen
+                channel = connection.channel()
+                
+                # Sicherstellen, dass die Ziel-Queue existiert
+                channel.queue_declare(queue='payment_queue')
+                
+                # Payload im erwarteten Format vorbereiten
+                zahlungs_daten = {
+                    "invoiceId": rechnungsnummer
+                }
+                # Payload in einen JSON-String serialisieren
+                nachricht_json = json.dumps(zahlungs_daten)
+                
+                # Nachricht ohne spezifischen Exchange direkt in die Queue pushen
+                channel.basic_publish(
+                    exchange='', 
+                    routing_key='payment_queue', 
+                    body=nachricht_json
+                )
+                
+                print("\nERFOLG: Zahlungsauftrag für Rechnung " + rechnungsnummer + " an RabbitMQ gesendet!")
+                
+                # Verbindung beenden
+                connection.close()
+
+            except Exception:
+                # Fallback, falls der RabbitMQ-Container/Server nicht läuft
+                print("\nFEHLER: Konnte RabbitMQ nicht erreichen. Ist der Server an?")
 
         elif auswahl == "3":
             print("\nProgramm wird beendet. Tschüss!")
