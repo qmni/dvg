@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+service InvoiceService {
+  rpc SaveInvoice (Invoice) returns (Response);
+}
+
+message Invoice {
+  string id = 1;
+  string supplier = 2;
+  double amount = 3;
+  string date = 4;
+}
+
+message Response {
+  string message = 1;
+}
