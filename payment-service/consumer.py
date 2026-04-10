@@ -33,3 +33,4 @@ def main():
 
     print('Warte auf Zahlungen. Drücke Strg+C zum Beenden.')
     channel.start_consuming()
+    
