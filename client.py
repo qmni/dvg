@@ -1,8 +1,8 @@
 import pika
 import json
 import grpc
-import gRPC.invoice_pb2 as invoice_pb2
-import gRPC.invoice_pb2_grpc as invoice_pb2_grpc
+import invoice_pb2
+import invoice_pb2_grpc
 
 def main():
     print("Willkommen im Rechnungs-Client von Team 8!")
@@ -20,32 +20,29 @@ def main():
             print("\nRechnung erfassen:")
             rechnungsnummer = input("Bitte Rechnungsnummer eingeben: ")
             lieferant = input("Bitte Lieferant eingeben: ")
-            betrag = input("Bitte Betrag in Euro eingeben (z.B. 10.10): ")
-            datum = input("Bitte Rechnungsdatum eingeben (z.B. 01.01.2026): ")
+            betrag = input("Bitte Betrag in Euro eingeben: ")
+            datum = input("Bitte Rechnungsdatum eingeben: ")
             
             try:
-                # 1. Betrag in float umwandeln, da der Server es so erwartet
-                betrag_float = float(betrag)
-                
-                # 2. Verbindung zum Server auf Port 50052 aufbauen (laut server.py)
+                # 1. Verbindung zum Server auf Port 50052 aufbauen (laut server.py)
                 channel = grpc.insecure_channel('localhost:50052')
                 stub = invoice_pb2_grpc.InvoiceServiceStub(channel)
                 
-                # 3. Daten in das erwartete format umwandeln
+                # 2. Daten in das erwartete format umwandeln
                 rechnung = invoice_pb2.Invoice(
                     id=rechnungsnummer,
                     supplier=lieferant,
-                    amount=betrag_float,
+                    amount=float(betrag),
                     date=datum
                 )
                 
-                # 4. Den Speichern-Befehl an den Server schicken
+                # 3. Den Speichern-Befehl an den Server schicken
                 antwort = stub.SaveInvoice(rechnung)
                 
                 print(f"\nERFOLG: Der Server meldet: {antwort.message}")
                 
             except ValueError:
-                print("\nFEHLER: Bitte für den Betrag nur Zahlen eingeben (z.B. 50.50, kein Komma!)")
+                print("\nFEHLER: Bitte nur gültige Zahlen eingeben (nicht leer, keine Buchstaben, kein Komma!).")    
             except grpc.RpcError as e:
                 print(f"\nFEHLER: Konnte gRPC-Server nicht erreichen. Läuft er? (Details: {e.details()})")
                 
