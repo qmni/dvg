@@ -85,7 +85,7 @@ def main():
         elif auswahl == "3":
             print("\nProgramm wird beendet. Tschüss!")
             break
-            
+
         else:
             print("\nFEHLER: Falsche Eingabe! Bitte tippe nur 1, 2 oder 3.")
 

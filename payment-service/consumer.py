@@ -21,9 +21,7 @@ def callback(ch, method, properties, body):
 
 
 def main():
-    connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
-    channel = connection.channel()
-
+    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     channel = connection.channel()
 
     channel.queue_declare(queue='payment_queue')
