@@ -32,3 +32,5 @@ def main():
     print('Warte auf Zahlungen. Drücke Strg+C zum Beenden.')
     channel.start_consuming()
     
+if __name__ == "__main__":
+    main()
