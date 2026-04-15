@@ -1,8 +1,8 @@
 import pika
 import json
 import grpc
-import invoice_pb2
-import invoice_pb2_grpc
+from shared import invoice_pb2
+from shared import invoice_pb2_grpc
 
 def main():
     print("Willkommen im Rechnungs-Client von Team 8!")

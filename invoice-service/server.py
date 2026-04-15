@@ -1,8 +1,8 @@
 import grpc
 from concurrent import futures
 
-import invoice_pb2
-import invoice_pb2_grpc
+from shared import invoice_pb2
+from shared import invoice_pb2_grpc
 
 # Speicher
 invoices = []
