@@ -1,6 +1,11 @@
 import pika
 import json
 import time
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+host = os.getenv("HOST")
 
 def process_payment(nachricht):
     print("Zahlung empfangen:", nachricht)
@@ -21,7 +26,7 @@ def callback(ch, method, properties, body):
 
 
 def main():
-    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host))
     channel = connection.channel()
 
     channel.queue_declare(queue='payment_queue')

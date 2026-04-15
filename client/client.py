@@ -3,6 +3,13 @@ import json
 import grpc
 from shared import invoice_pb2
 from shared import invoice_pb2_grpc
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+host = os.getenv("HOST")
+port = int(os.getenv("INVOICE_PORT"))
 
 def main():
     print("Willkommen im Rechnungs-Client von Team 8!")
@@ -24,8 +31,8 @@ def main():
             datum = input("Bitte Rechnungsdatum eingeben: ")
             
             try:
-                # 1. Verbindung zum Server auf Port 50052 aufbauen (laut server.py)
-                channel = grpc.insecure_channel('localhost:50052')
+                # 1. Verbindung zum Server auf Port 50052 aufbauen
+                channel = grpc.insecure_channel(f"{host}:{port}")
                 stub = invoice_pb2_grpc.InvoiceServiceStub(channel)
                 
                 # 2. Daten in das erwartete format umwandeln
@@ -52,7 +59,7 @@ def main():
             
             try:
                 # Verbindung zum lokalen RabbitMQ-Broker herstellen
-                connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+                connection = pika.BlockingConnection(pika.ConnectionParameters(host))
                 # Kommunikationskanal für die Session öffnen
                 channel = connection.channel()
                 

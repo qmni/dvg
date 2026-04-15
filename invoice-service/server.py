@@ -1,8 +1,14 @@
 import grpc
 from concurrent import futures
-
 from shared import invoice_pb2
 from shared import invoice_pb2_grpc
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+host = os.getenv("HOST")
+port = int(os.getenv("INVOICE_PORT"))
 
 # Speicher
 invoices = []
@@ -55,7 +61,7 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
     invoice_pb2_grpc.add_InvoiceServiceServicer_to_server(InvoiceService(), server)
     
-    server.add_insecure_port("[::]:50052")
+    server.add_insecure_port(f"{host}:{port}")
     server.start()
 
     print("gRPC-Server läuft auf Port 50052...")
