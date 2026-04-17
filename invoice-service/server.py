@@ -38,6 +38,12 @@ class InvoiceService(invoice_pb2_grpc.InvoiceServiceServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             context.set_details("date darf nicht leer sein.")
             return invoice_pb2.Response()
+        
+        for inv in invoices:
+            if inv["id"] == request.id:
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS)
+                context.set_details("Rechnung existiert bereits.")
+                return invoice_pb2.Response()
             
         invoice = {
             "id": request.id,
