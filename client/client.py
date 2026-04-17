@@ -49,9 +49,12 @@ def main():
                 print(f"\nERFOLG: Der Server meldet: {antwort.message}")
                 
             except ValueError:
-                print("\nFEHLER: Bitte nur gültige Zahlen eingeben (nicht leer, keine Buchstaben, kein Komma!).")    
+                print("\nFEHLER: Bitte nur gültige Zahlen eingeben (nicht leer, keine Buchstaben, kein Komma!).")   
             except grpc.RpcError as e:
-                print(f"\nFEHLER: Konnte gRPC-Server nicht erreichen. Läuft er? (Details: {e.details()})")
+                if e.code() == grpc.StatusCode.ALREADY_EXISTS:
+                    print (f"\nUngültige Eingabe! (Details: {e.details()})")
+                else:
+                    print(f"\nFEHLER: Konnte gRPC-Server nicht erreichen. Läuft er? (Details: {e.details()})")
                 
         elif auswahl == "2":
             print("\nZahlung veranlassen:")
