@@ -1,8 +1,14 @@
 import grpc
 from concurrent import futures
+from shared import invoice_pb2
+from shared import invoice_pb2_grpc
+from dotenv import load_dotenv
+import os
 
-import invoice_pb2
-import invoice_pb2_grpc
+load_dotenv()
+
+host = os.getenv("HOST")
+port = int(os.getenv("INVOICE_PORT"))
 
 # Speicher
 invoices = []
@@ -32,6 +38,12 @@ class InvoiceService(invoice_pb2_grpc.InvoiceServiceServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             context.set_details("date darf nicht leer sein.")
             return invoice_pb2.Response()
+        
+        for inv in invoices:
+            if inv["id"] == request.id:
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS)
+                context.set_details("Rechnung existiert bereits.")
+                return invoice_pb2.Response()
             
         invoice = {
             "id": request.id,
@@ -55,7 +67,7 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
     invoice_pb2_grpc.add_InvoiceServiceServicer_to_server(InvoiceService(), server)
     
-    server.add_insecure_port("[::]:50052")
+    server.add_insecure_port(f"{host}:{port}")
     server.start()
 
     print("gRPC-Server läuft auf Port 50052...")

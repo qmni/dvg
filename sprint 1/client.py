@@ -1,8 +1,15 @@
 import pika
 import json
 import grpc
-import invoice_pb2
-import invoice_pb2_grpc
+from shared import invoice_pb2
+from shared import invoice_pb2_grpc
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+host = os.getenv("HOST")
+port = int(os.getenv("INVOICE_PORT"))
 
 def main():
     print("Willkommen im Rechnungs-Client von Team 8!")
@@ -24,8 +31,8 @@ def main():
             datum = input("Bitte Rechnungsdatum eingeben: ")
             
             try:
-                # 1. Verbindung zum Server auf Port 50052 aufbauen (laut server.py)
-                channel = grpc.insecure_channel('localhost:50052')
+                # 1. Verbindung zum Server auf Port 50052 aufbauen
+                channel = grpc.insecure_channel(f"{host}:{port}")
                 stub = invoice_pb2_grpc.InvoiceServiceStub(channel)
                 
                 # 2. Daten in das erwartete format umwandeln
@@ -42,9 +49,12 @@ def main():
                 print(f"\nERFOLG: Der Server meldet: {antwort.message}")
                 
             except ValueError:
-                print("\nFEHLER: Bitte nur gültige Zahlen eingeben (nicht leer, keine Buchstaben, kein Komma!).")    
+                print("\nFEHLER: Bitte nur gültige Zahlen eingeben (nicht leer, keine Buchstaben, kein Komma!).")   
             except grpc.RpcError as e:
-                print(f"\nFEHLER: Konnte gRPC-Server nicht erreichen. Läuft er? (Details: {e.details()})")
+                if e.code() == grpc.StatusCode.ALREADY_EXISTS:
+                    print (f"\nUngültige Eingabe! (Details: {e.details()})")
+                else:
+                    print(f"\nFEHLER: Konnte gRPC-Server nicht erreichen. Läuft er? (Details: {e.details()})")
                 
         elif auswahl == "2":
             print("\nZahlung veranlassen:")
@@ -52,7 +62,7 @@ def main():
             
             try:
                 # Verbindung zum lokalen RabbitMQ-Broker herstellen
-                connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+                connection = pika.BlockingConnection(pika.ConnectionParameters(host))
                 # Kommunikationskanal für die Session öffnen
                 channel = connection.channel()
                 
@@ -85,7 +95,7 @@ def main():
         elif auswahl == "3":
             print("\nProgramm wird beendet. Tschüss!")
             break
-            
+
         else:
             print("\nFEHLER: Falsche Eingabe! Bitte tippe nur 1, 2 oder 3.")
 
