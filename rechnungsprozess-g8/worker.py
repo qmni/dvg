@@ -8,25 +8,18 @@ from pyzeebe import ZeebeWorker, create_camunda_cloud_channel
 from dotenv import load_dotenv
 from config import CAMUNDA_CONFIG
 
+
 # Deine bestehenden Shared-Imports für den gRPC-Aufruf
-from shared import invoice_pb2
-from shared import invoice_pb2_grpc
+#from shared import invoice_pb2
+#from shared import invoice_pb2_grpc
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 # --- VERBINDUNG ZUR CAMUNDA WEB CLOUD (SAAS) ---
-channel = create_camunda_cloud_channel(
-    client_id=CAMUNDA_CONFIG["client_id"],
-    client_secret=CAMUNDA_CONFIG["client_secret"],
-    cluster_id=CAMUNDA_CONFIG["cluster_id"],
-    region=CAMUNDA_CONFIG["region"]
-)
+# pyzeebe zieht sich die Variablen automatisch aus deiner .env Datei!
+channel = create_camunda_cloud_channel()
 worker = ZeebeWorker(channel)
-
-# Lokale Services (gRPC-Server & RabbitMQ)
-HOST = os.getenv("HOST", "localhost")
-INVOICE_PORT = os.getenv("INVOICE_PORT", "50052")
 
 
 # --- TASK 1: Speicherung der Metadaten per gRPC Service ---
