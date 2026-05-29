@@ -7,7 +7,7 @@ import os
 
 load_dotenv()
 
-host = os.getenv("INVOICE_HOST")
+host = os.getenv("HOST")
 port = int(os.getenv("INVOICE_PORT"))
 
 # Speicher
