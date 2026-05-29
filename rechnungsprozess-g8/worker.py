@@ -78,23 +78,24 @@ async def main():
     # ------------------------------------------------------------
     # TASK: Rechnung ins Invoice Service speichern
     # BPMN Task Type: save-invoice
+    # Erwartete Camunda-Variablen: id, supplier, amount, date
     # ------------------------------------------------------------
 
     @worker.task(task_type="save-invoice")
     async def save_invoice(
-        rechnungsNummer=None,
-        lieferant=None,
-        betrag=None,
-        datum=None
+        id=None,
+        supplier=None,
+        amount=None,
+        date=None
     ):
         print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
-        print("[DEBUG] rechnungsNummer:", rechnungsNummer)
-        print("[DEBUG] lieferant:", lieferant)
-        print("[DEBUG] betrag:", betrag)
-        print("[DEBUG] datum:", datum)
+        print("[DEBUG] id:", id)
+        print("[DEBUG] supplier:", supplier)
+        print("[DEBUG] amount:", amount)
+        print("[DEBUG] date:", date)
 
-        if not rechnungsNummer or not lieferant or betrag is None or not datum:
-            fehlermeldung = "Pflichtdaten fehlen: rechnungsNummer, lieferant, betrag oder datum"
+        if not id or not supplier or amount is None or not date:
+            fehlermeldung = "Pflichtdaten fehlen: id, supplier, amount oder date"
             print(f"[FEHLER] {fehlermeldung}")
 
             return {
@@ -107,13 +108,13 @@ async def main():
             stub = invoice_pb2_grpc.InvoiceServiceStub(grpc_channel)
 
             rechnung = invoice_pb2.Invoice(
-                id=str(rechnungsNummer),
-                supplier=str(lieferant),
-                amount=float(betrag),
-                date=str(datum)
+                id=str(id),
+                supplier=str(supplier),
+                amount=float(amount),
+                date=str(date)
             )
 
-            print(f"[gRPC] Sende Rechnung {rechnungsNummer} an {INVOICE_HOST}:{INVOICE_PORT} ...")
+            print(f"[gRPC] Sende Rechnung {id} an {INVOICE_HOST}:{INVOICE_PORT} ...")
             antwort = stub.SaveInvoice(rechnung)
             print(f"[gRPC] Antwort vom Invoice Service: {antwort.message}")
 
@@ -123,7 +124,7 @@ async def main():
             }
 
         except ValueError:
-            fehlermeldung = f"Betrag ist keine gültige Zahl: {betrag}"
+            fehlermeldung = f"amount ist keine gültige Zahl: {amount}"
             print(f"[FEHLER] {fehlermeldung}")
 
             return {
@@ -179,14 +180,15 @@ async def main():
     # ------------------------------------------------------------
     # TASK: Zahlungsauftrag an Payment Service senden
     # BPMN Task Type: payment-service
+    # Nutzt bevorzugt Camunda-Variable id als invoiceId
     # ------------------------------------------------------------
 
     @worker.task(task_type="payment-service")
-    async def send_payment_notification(rechnungsNummer=None):
+    async def send_payment_notification(id=None):
         print("\n[Camunda-Worker] Task 'payment-service' empfangen.")
-        print("[DEBUG] rechnungsNummer:", rechnungsNummer)
+        print("[DEBUG] id:", id)
 
-        rechnungsnummer = rechnungsNummer or "UNBEKANNT"
+        invoice_id = id or "UNBEKANNT"
 
         try:
             connection = pika.BlockingConnection(
@@ -196,7 +198,7 @@ async def main():
             rabbit_channel.queue_declare(queue="payment_queue")
 
             zahlungs_daten = {
-                "invoiceId": rechnungsnummer
+                "invoiceId": invoice_id
             }
 
             nachricht_json = json.dumps(zahlungs_daten)
@@ -207,7 +209,7 @@ async def main():
                 body=nachricht_json
             )
 
-            print(f"[RabbitMQ] Zahlungsauftrag für Rechnung {rechnungsnummer} gesendet.")
+            print(f"[RabbitMQ] Zahlungsauftrag für Rechnung {invoice_id} gesendet.")
             connection.close()
 
             return {
