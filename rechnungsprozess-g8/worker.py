@@ -82,70 +82,73 @@ async def main():
     # ------------------------------------------------------------
 
     @worker.task(task_type="save-invoice")
-    async def save_invoice(job_variables: dict):
-        print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
-        print("[DEBUG] Empfangene Variablen:", job_variables)
+async def save_invoice(
+    rechnungsNummer=None,
+    lieferant=None,
+    betrag=None,
+    datum=None
+):
+    print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
+    print("[DEBUG] rechnungsNummer:", rechnungsNummer)
+    print("[DEBUG] lieferant:", lieferant)
+    print("[DEBUG] betrag:", betrag)
+    print("[DEBUG] datum:", datum)
 
-        rechnungsnummer = job_variables.get("rechnungsNummer")
-        lieferant = job_variables.get("lieferant")
-        betrag = job_variables.get("betrag")
-        datum = job_variables.get("datum")
+    if not rechnungsNummer or not lieferant or betrag is None or not datum:
+        fehlermeldung = "Pflichtdaten fehlen: rechnungsNummer, lieferant, betrag oder datum"
+        print(f"[FEHLER] {fehlermeldung}")
 
-        if not rechnungsnummer or not lieferant or betrag is None or not datum:
-            fehlermeldung = "Pflichtdaten fehlen: rechnungsNummer, lieferant, betrag oder datum"
-            print(f"[FEHLER] {fehlermeldung}")
+        return {
+            "invoice_saved": False,
+            "invoice_error": fehlermeldung
+        }
 
-            return {
-                "invoice_saved": False,
-                "invoice_error": fehlermeldung
-            }
+    try:
+        grpc_channel = grpc.insecure_channel(f"{INVOICE_HOST}:{INVOICE_PORT}")
+        stub = invoice_pb2_grpc.InvoiceServiceStub(grpc_channel)
 
-        try:
-            grpc_channel = grpc.insecure_channel(f"{INVOICE_HOST}:{INVOICE_PORT}")
-            stub = invoice_pb2_grpc.InvoiceServiceStub(grpc_channel)
+        rechnung = invoice_pb2.Invoice(
+            id=str(rechnungsNummer),
+            supplier=str(lieferant),
+            amount=float(betrag),
+            date=str(datum)
+        )
 
-            rechnung = invoice_pb2.Invoice(
-                id=str(rechnungsnummer),
-                supplier=str(lieferant),
-                amount=float(betrag),
-                date=str(datum)
-            )
+        print(f"[gRPC] Sende Rechnung {rechnungsNummer} an {INVOICE_HOST}:{INVOICE_PORT} ...")
+        antwort = stub.SaveInvoice(rechnung)
+        print(f"[gRPC] Antwort vom Invoice Service: {antwort.message}")
 
-            print(f"[gRPC] Sende Rechnung {rechnungsnummer} an {INVOICE_HOST}:{INVOICE_PORT} ...")
-            antwort = stub.SaveInvoice(rechnung)
-            print(f"[gRPC] Antwort vom Invoice Service: {antwort.message}")
+        return {
+            "invoice_saved": True,
+            "invoice_message": antwort.message
+        }
 
-            return {
-                "invoice_saved": True,
-                "invoice_message": antwort.message
-            }
+    except ValueError:
+        fehlermeldung = f"Betrag ist keine gültige Zahl: {betrag}"
+        print(f"[FEHLER] {fehlermeldung}")
 
-        except ValueError:
-            fehlermeldung = f"Betrag ist keine gültige Zahl: {betrag}"
-            print(f"[FEHLER] {fehlermeldung}")
+        return {
+            "invoice_saved": False,
+            "invoice_error": fehlermeldung
+        }
 
-            return {
-                "invoice_saved": False,
-                "invoice_error": fehlermeldung
-            }
+    except grpc.RpcError as e:
+        fehlermeldung = e.details()
+        print(f"[FEHLER] gRPC-Fehler: {fehlermeldung}")
 
-        except grpc.RpcError as e:
-            fehlermeldung = e.details()
-            print(f"[FEHLER] gRPC-Fehler: {fehlermeldung}")
+        return {
+            "invoice_saved": False,
+            "invoice_error": fehlermeldung
+        }
 
-            return {
-                "invoice_saved": False,
-                "invoice_error": fehlermeldung
-            }
+    except Exception as e:
+        fehlermeldung = str(e)
+        print(f"[FEHLER] Unerwarteter Fehler: {fehlermeldung}")
 
-        except Exception as e:
-            fehlermeldung = str(e)
-            print(f"[FEHLER] Unerwarteter Fehler: {fehlermeldung}")
-
-            return {
-                "invoice_saved": False,
-                "invoice_error": fehlermeldung
-            }
+        return {
+            "invoice_saved": False,
+            "invoice_error": fehlermeldung
+        }
 
     # ------------------------------------------------------------
     # TASK: Rechnungsdaten validieren
