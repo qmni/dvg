@@ -82,12 +82,12 @@ async def main():
     # ------------------------------------------------------------
 
     @worker.task(task_type="save-invoice")
-async def save_invoice(
-    rechnungsNummer=None,
-    lieferant=None,
-    betrag=None,
-    datum=None
-):
+    async def save_invoice(
+        rechnungsNummer=None,
+        lieferant=None,
+        betrag=None,
+        datum=None
+    ):
     print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
     print("[DEBUG] rechnungsNummer:", rechnungsNummer)
     print("[DEBUG] lieferant:", lieferant)
