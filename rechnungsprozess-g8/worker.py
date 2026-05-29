@@ -27,7 +27,7 @@ import invoice_pb2_grpc
 
 
 INVOICE_HOST = os.getenv("INVOICE_HOST", "localhost")
-INVOICE_PORT = os.getenv("INVOICE_PORT", "50051")
+INVOICE_PORT = os.getenv("INVOICE_PORT", "50052")
 
 # Für RabbitMQ; falls ihr keinen separaten Wert habt, wird localhost genutzt
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")

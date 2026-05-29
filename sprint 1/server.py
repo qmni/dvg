@@ -70,7 +70,7 @@ def serve():
     server.add_insecure_port(f"{host}:{port}")
     server.start()
 
-    print("gRPC-Server läuft auf Port 50052...")
+    print(f"gRPC-Server läuft auf Port {port}...")
     
     server.wait_for_termination()
 
