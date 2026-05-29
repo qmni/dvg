@@ -2,15 +2,19 @@ import asyncio
 import logging
 import json
 import os
-import sys
-from pathlib import Path
-
-import grpc
 import pika
-from dotenv import load_dotenv
+import sys
 from pyzeebe import ZeebeWorker, create_camunda_cloud_channel
+from dotenv import load_dotenv
+from config import CAMUNDA_CONFIG
 
+# Windows-spezifischer Fix für gRPC und asynchrone Sockets
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+<<<<<<< HEAD
+load_dotenv()
+=======
 # ------------------------------------------------------------
 # Setup
 # ------------------------------------------------------------
@@ -18,16 +22,38 @@ from pyzeebe import ZeebeWorker, create_camunda_cloud_channel
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
+>>>>>>> 83435bd2aa9ae19f29eeef0fe465d0500a4acda2
 logging.basicConfig(level=logging.INFO)
 
-# Pfad zu "sprint 1" hinzufügen, damit invoice_pb2 importiert werden kann
-SPRINT_1_PATH = Path(__file__).resolve().parents[1] / "sprint 1"
-sys.path.append(str(SPRINT_1_PATH))
+HOST = os.getenv("HOST", "localhost")
 
-import invoice_pb2
-import invoice_pb2_grpc
+# --- TASK REGISTRY (Verhindert verfrühte Loop-Bindung) ---
+class TaskRegistry:
+    def __init__(self):
+        self.tasks = []
+    def task(self, task_type):
+        def decorator(func):
+            self.tasks.append((task_type, func))
+            return func
+        return decorator
 
+registry = TaskRegistry()
 
+<<<<<<< HEAD
+@registry.task(task_type="metadaten-extrahieren")
+async def save_metadata_via_grpc(job_variables: dict):
+    print("\n[Camunda-SaaS-Worker] Task 'Metadaten extrahieren' erhalten...")
+    rechnungsnummer = job_variables.get("rechnungsNummer", "UNBEKANNT")
+    lieferant = job_variables.get("lieferant", "Unbekannter Lieferant")
+    betrag = job_variables.get("betrag", 0.0)
+    print(f"[Worker-Info] Daten: Nr={rechnungsnummer}, Lieferant={lieferant}, Betrag={betrag}")
+    return {"extraktionErfolgreich": True, "pflichtdatenVorhanden": True}
+
+@registry.task(task_type="rechnungsdaten-validieren")
+async def task_validation():
+    print("[Camunda-SaaS-Worker] Rechnungsdaten werden validiert.")
+    return {"complianceCheckNotwendig": False}
+=======
 # ------------------------------------------------------------
 # Umgebungsvariablen
 # ------------------------------------------------------------
@@ -154,7 +180,14 @@ async def main():
     # TASK: Rechnungsdaten validieren
     # BPMN Task Type: rechnungsdaten-validieren
     # ------------------------------------------------------------
+>>>>>>> 83435bd2aa9ae19f29eeef0fe465d0500a4acda2
 
+<<<<<<< HEAD
+@registry.task(task_type="erp-system")
+async def task_erp():
+    print("[Camunda-SaaS-Worker] ERP-Eintrag bestätigt.")
+    return {"manuelleFreigabeNoetig": False}
+=======
     @worker.task(task_type="rechnungsdaten-validieren")
     async def task_validation():
         print("[Camunda-Worker] Task 'rechnungsdaten-validieren' empfangen.")
@@ -171,7 +204,24 @@ async def main():
     @worker.task(task_type="erp-system")
     async def task_erp():
         print("[Camunda-Worker] Task 'erp-system' empfangen.")
+>>>>>>> 83435bd2aa9ae19f29eeef0fe465d0500a4acda2
 
+<<<<<<< HEAD
+@registry.task(task_type="payment-service")
+async def send_payment_notification(job_variables: dict):
+    print("\n[Camunda-SaaS-Worker] Task 'Zahlung veranlassen' erhalten...")
+    rechnungsnummer = job_variables.get("rechnungsNummer", "UNBEKANNT")
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(HOST))
+        channel = connection.channel()
+        channel.queue_declare(queue='payment_queue')
+        channel.basic_publish(exchange='', routing_key='payment_queue', body=json.dumps({"invoiceId": rechnungsnummer}))
+        print(f"[RabbitMQ] Zahlungsauftrag für {rechnungsnummer} in die Queue gelegt!")
+        connection.close()
+    except Exception as e:
+        print(f"[FEHLER] RabbitMQ nicht erreichbar: {e}")
+    return {}
+=======
         return {
             "manuelleFreigabeNoetig": False,
             "erp_erfolgreich": True
@@ -224,7 +274,32 @@ async def main():
                 "payment_message_sent": False,
                 "payment_error": fehlermeldung
             }
+>>>>>>> 83435bd2aa9ae19f29eeef0fe465d0500a4acda2
 
+<<<<<<< HEAD
+@registry.task(task_type="zahlung-ausführen")
+async def task_final():
+    print("[Camunda-SaaS-Worker] Workflow erfolgreich beendet.")
+    return {}
+
+# --- DIE MAIN FUNKTION (Erstellt alles im exakt selben Loop) ---
+async def main():
+    print("Verbinde mit Camunda Cloud SaaS...")
+    
+    # Der gRPC-Kanal MUSS zwingend IM laufenden Loop generiert werden
+    channel = create_camunda_cloud_channel(
+        client_id=CAMUNDA_CONFIG["client_id"],
+        client_secret=CAMUNDA_CONFIG["client_secret"],
+        cluster_id=CAMUNDA_CONFIG["cluster_id"],
+        region=CAMUNDA_CONFIG["region"]
+    )
+    
+    worker = ZeebeWorker(channel)
+    
+    # Tasks an den Worker binden
+    for task_type, func in registry.tasks:
+        worker.task(task_type)(func)
+=======
     # ------------------------------------------------------------
     # TASK: Zahlung ausführen
     # BPMN Task Type: zahlung-ausführen
@@ -243,9 +318,19 @@ async def main():
     print(f"RabbitMQ Host: {RABBITMQ_HOST}")
     print("Lausche auf Tasks aus Camunda Cloud...")
     print("=" * 50)
+>>>>>>> 83435bd2aa9ae19f29eeef0fe465d0500a4acda2
 
+    print("========================================")
+    print("--- WEB-WORKER (SAAS) ERFOLGREICH GESTARTET ---")
+    print("Verbindung zu Cluster steht!")
+    print("Lausche auf Aufgaben aus dem Webbrowser...")
+    print("========================================")
+    
     await worker.work()
 
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        # Das hier räumt mit alten 'run_until_complete'-Leichen auf
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nWorker manuell gestoppt.")
