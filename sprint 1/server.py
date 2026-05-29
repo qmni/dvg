@@ -1,7 +1,7 @@
 import grpc
 from concurrent import futures
-from shared import invoice_pb2
-from shared import invoice_pb2_grpc
+import invoice_pb2
+import invoice_pb2_grpc
 from dotenv import load_dotenv
 import os
 
