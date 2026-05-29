@@ -2,114 +2,221 @@ import asyncio
 import logging
 import json
 import os
-import pika
+import sys
+from pathlib import Path
+
 import grpc
-from pyzeebe import ZeebeWorker, create_camunda_cloud_channel
+import pika
 from dotenv import load_dotenv
-from config import CAMUNDA_CONFIG
+from pyzeebe import ZeebeWorker, create_camunda_cloud_channel
 
 
-# Deine bestehenden Shared-Imports für den gRPC-Aufruf
-#from shared import invoice_pb2
-#from shared import invoice_pb2_grpc
+# ------------------------------------------------------------
+# Setup
+# ------------------------------------------------------------
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-# --- VERBINDUNG ZUR CAMUNDA WEB CLOUD (SAAS) ---
-# pyzeebe zieht sich die Variablen automatisch aus deiner .env Datei!
+# Pfad zu "sprint 1" hinzufügen, damit invoice_pb2 importiert werden kann
+SPRINT_1_PATH = Path(__file__).resolve().parents[1] / "sprint 1"
+sys.path.append(str(SPRINT_1_PATH))
+
+import invoice_pb2
+import invoice_pb2_grpc
+
+
+INVOICE_HOST = os.getenv("INVOICE_HOST", "localhost")
+INVOICE_PORT = os.getenv("INVOICE_PORT", "50051")
+
+# Für RabbitMQ; falls ihr keinen separaten Wert habt, wird localhost genutzt
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+
+
+# ------------------------------------------------------------
+# Camunda Cloud Verbindung
+# ------------------------------------------------------------
+
 channel = create_camunda_cloud_channel()
 worker = ZeebeWorker(channel)
 
 
-# --- TASK 1: Speicherung der Metadaten per gRPC Service ---
-@worker.task(task_type="metadaten-extrahieren")
-async def save_metadata_via_grpc(job_variables: dict):
-    print("\n[Camunda-SaaS-Worker] Task 'Metadaten extrahieren' aus der Cloud empfangen...")
-    
-    # Holen der Variablen, die beim Start übergeben wurden
-    rechnungsnummer = job_variables.get("rechnungsNummer", "UNBEKANNT")
-    lieferant = job_variables.get("lieferant", "Unbekannter Lieferant")
-    betrag = job_variables.get("betrag", 0.0)
-    datum = job_variables.get("datum", "01.01.2026")
+# ------------------------------------------------------------
+# TASK: Rechnung ins Invoice Service speichern
+# BPMN Task Type: save-invoice
+# ------------------------------------------------------------
+
+@worker.task(task_type="save-invoice")
+async def save_invoice(job_variables: dict):
+    print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
+    print("[DEBUG] Empfangene Variablen:", job_variables)
+
+    rechnungsnummer = job_variables.get("rechnungsNummer")
+    lieferant = job_variables.get("lieferant")
+    betrag = job_variables.get("betrag")
+    datum = job_variables.get("datum")
+
+    if not rechnungsnummer or not lieferant or betrag is None or not datum:
+        fehlermeldung = "Pflichtdaten fehlen: rechnungsNummer, lieferant, betrag oder datum"
+        print(f"[FEHLER] {fehlermeldung}")
+
+        return {
+            "invoice_saved": False,
+            "invoice_error": fehlermeldung
+        }
 
     try:
-        # gRPC Verbindung zu DEINEM lokalen server.py herstellen
-        grpc_channel = grpc.insecure_channel(f"{HOST}:{INVOICE_PORT}")
+        grpc_channel = grpc.insecure_channel(f"{INVOICE_HOST}:{INVOICE_PORT}")
         stub = invoice_pb2_grpc.InvoiceServiceStub(grpc_channel)
-        
+
         rechnung = invoice_pb2.Invoice(
             id=str(rechnungsnummer),
             supplier=str(lieferant),
             amount=float(betrag),
             date=str(datum)
         )
-        
-        print(f"[gRPC-Client] Sende Rechnung {rechnungsnummer} an lokalen gRPC-Server...")
+
+        print(f"[gRPC] Sende Rechnung {rechnungsnummer} an {INVOICE_HOST}:{INVOICE_PORT} ...")
         antwort = stub.SaveInvoice(rechnung)
-        print(f"[gRPC-Client] Server-Antwort erhalten: {antwort.message}")
-        
-        # Variablen an Camunda zurückgeben (steuert die Gateways im BPMN)
-        return {"extraktionErfolgreich": True, "pflichtdatenVorhanden": True}
-        
+        print(f"[gRPC] Antwort vom Invoice Service: {antwort.message}")
+
+        return {
+            "invoice_saved": True,
+            "invoice_message": antwort.message
+        }
+
+    except ValueError:
+        fehlermeldung = f"Betrag ist keine gültige Zahl: {betrag}"
+        print(f"[FEHLER] {fehlermeldung}")
+
+        return {
+            "invoice_saved": False,
+            "invoice_error": fehlermeldung
+        }
+
     except grpc.RpcError as e:
-        print(f"[FEHLER] Lokaler gRPC-Server (server.py) nicht erreichbar! Details: {e.details()}")
-        return {"extraktionErfolgreich": False, "pflichtdatenVorhanden": False}
+        fehlermeldung = e.details()
+        print(f"[FEHLER] gRPC-Fehler: {fehlermeldung}")
+
+        return {
+            "invoice_saved": False,
+            "invoice_error": fehlermeldung
+        }
+
+    except Exception as e:
+        fehlermeldung = str(e)
+        print(f"[FEHLER] Unerwarteter Fehler: {fehlermeldung}")
+
+        return {
+            "invoice_saved": False,
+            "invoice_error": fehlermeldung
+        }
 
 
-# --- TASK 2: Rechnungsdaten validieren ---
+# ------------------------------------------------------------
+# TASK: Rechnungsdaten validieren
+# BPMN Task Type: rechnungsdaten-validieren
+# ------------------------------------------------------------
+
 @worker.task(task_type="rechnungsdaten-validieren")
 async def task_validation():
-    print("[Camunda-SaaS-Worker] Rechnungsdaten werden validiert. Setze Compliance auf False.")
-    return {"complianceCheckNotwendig": False}
+    print("[Camunda-Worker] Task 'rechnungsdaten-validieren' empfangen.")
+
+    return {
+        "complianceCheckNotwendig": False
+    }
 
 
-# --- TASK 3: ERP Übernahme ---
+# ------------------------------------------------------------
+# TASK: ERP-System
+# BPMN Task Type: erp-system
+# ------------------------------------------------------------
+
 @worker.task(task_type="erp-system")
 async def task_erp():
-    print("[Camunda-SaaS-Worker] ERP-Eintrag im Workflow bestätigt.")
-    return {"manuelleFreigabeNoetig": False}
+    print("[Camunda-Worker] Task 'erp-system' empfangen.")
+
+    return {
+        "manuelleFreigabeNoetig": False,
+        "erp_erfolgreich": True
+    }
 
 
-# --- TASK 4: Nachricht an das Zahlungssystem (RabbitMQ) ---
+# ------------------------------------------------------------
+# TASK: Zahlungsauftrag an Payment Service senden
+# BPMN Task Type: payment-service
+# ------------------------------------------------------------
+
 @worker.task(task_type="payment-service")
 async def send_payment_notification(job_variables: dict):
-    print("\n[Camunda-SaaS-Worker] Task 'Zahlung veranlassen' aus der Cloud empfangen...")
+    print("\n[Camunda-Worker] Task 'payment-service' empfangen.")
+    print("[DEBUG] Empfangene Variablen:", job_variables)
+
     rechnungsnummer = job_variables.get("rechnungsNummer", "UNBEKANNT")
 
     try:
-        # Verbindung zu DEINEM lokalen RabbitMQ-Broker aufbauen
-        connection = pika.BlockingConnection(pika.ConnectionParameters(HOST))
-        channel = connection.channel()
-        channel.queue_declare(queue='payment_queue')
-        
-        zahlungs_daten = {"invoiceId": rechnungsnummer}
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=RABBITMQ_HOST)
+        )
+        rabbit_channel = connection.channel()
+        rabbit_channel.queue_declare(queue="payment_queue")
+
+        zahlungs_daten = {
+            "invoiceId": rechnungsnummer
+        }
+
         nachricht_json = json.dumps(zahlungs_daten)
-        
-        channel.basic_publish(exchange='', routing_key='payment_queue', body=nachricht_json)
-        print(f"[RabbitMQ-Client] Zahlungsauftrag für {rechnungsnummer} in die Queue gelegt!")
+
+        rabbit_channel.basic_publish(
+            exchange="",
+            routing_key="payment_queue",
+            body=nachricht_json
+        )
+
+        print(f"[RabbitMQ] Zahlungsauftrag für Rechnung {rechnungsnummer} gesendet.")
         connection.close()
-        
+
+        return {
+            "payment_message_sent": True
+        }
+
     except Exception as e:
-        print(f"[FEHLER] Lokales RabbitMQ nicht erreichbar! Fehler: {e}")
+        fehlermeldung = str(e)
+        print(f"[FEHLER] RabbitMQ nicht erreichbar: {fehlermeldung}")
 
-    return {}
+        return {
+            "payment_message_sent": False,
+            "payment_error": fehlermeldung
+        }
 
 
-# --- TASK 5: Zahlung ausführen (Abschluss) ---
+# ------------------------------------------------------------
+# TASK: Zahlung ausführen
+# BPMN Task Type: zahlung-ausführen
+# ------------------------------------------------------------
+
 @worker.task(task_type="zahlung-ausführen")
 async def task_final():
-    print("[Camunda-SaaS-Worker] Workflow in der Camunda-Cloud erfolgreich durchgelaufen und beendet.")
+    print("[Camunda-Worker] Task 'zahlung-ausführen' empfangen.")
+    print("[Camunda-Worker] Workflow abgeschlossen.")
+
     return {}
 
 
+# ------------------------------------------------------------
+# Main
+# ------------------------------------------------------------
+
 async def main():
-    print("\n" + "="*40)
-    print("--- WEB-WORKER (SAAS) ERFOLGREICH GESTARTET ---")
-    print("Verbindung zu Cluster 487e2664... steht!")
-    print("Lausche auf Aufgaben aus dem Webbrowser...")
-    print("="*40)
+    print("\n" + "=" * 50)
+    print("--- CAMUNDA WORKER GESTARTET ---")
+    print(f"Invoice gRPC Server: {INVOICE_HOST}:{INVOICE_PORT}")
+    print(f"RabbitMQ Host: {RABBITMQ_HOST}")
+    print("Lausche auf Tasks aus Camunda Cloud...")
+    print("=" * 50)
+
     await worker.work()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
