@@ -15,7 +15,9 @@ from pyzeebe import ZeebeWorker, create_camunda_cloud_channel
 # Setup
 # ------------------------------------------------------------
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
+
 logging.basicConfig(level=logging.INFO)
 
 # Pfad zu "sprint 1" hinzufügen, damit invoice_pb2 importiert werden kann
@@ -26,11 +28,46 @@ import invoice_pb2
 import invoice_pb2_grpc
 
 
+# ------------------------------------------------------------
+# Umgebungsvariablen
+# ------------------------------------------------------------
+
 INVOICE_HOST = os.getenv("INVOICE_HOST", "localhost")
 INVOICE_PORT = os.getenv("INVOICE_PORT", "50052")
 
-# Für RabbitMQ; falls ihr keinen separaten Wert habt, wird localhost genutzt
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+
+
+# Camunda / Zeebe Credentials aus .env lesen
+ZEEBE_CLIENT_ID = os.getenv("ZEEBE_CLIENT_ID") or os.getenv("CAMUNDA_CLIENT_ID")
+ZEEBE_CLIENT_SECRET = os.getenv("ZEEBE_CLIENT_SECRET") or os.getenv("CAMUNDA_CLIENT_SECRET")
+ZEEBE_CLUSTER_ID = os.getenv("ZEEBE_CLUSTER_ID") or os.getenv("CAMUNDA_CLUSTER_ID")
+ZEEBE_REGION = os.getenv("ZEEBE_REGION") or os.getenv("CAMUNDA_REGION")
+
+
+# pyzeebe erwartet je nach Version CAMUNDA_* oder ZEEBE_*.
+# Deshalb setzen wir beide Varianten explizit.
+if ZEEBE_CLIENT_ID:
+    os.environ["ZEEBE_CLIENT_ID"] = ZEEBE_CLIENT_ID
+    os.environ["CAMUNDA_CLIENT_ID"] = ZEEBE_CLIENT_ID
+
+if ZEEBE_CLIENT_SECRET:
+    os.environ["ZEEBE_CLIENT_SECRET"] = ZEEBE_CLIENT_SECRET
+    os.environ["CAMUNDA_CLIENT_SECRET"] = ZEEBE_CLIENT_SECRET
+
+if ZEEBE_CLUSTER_ID:
+    os.environ["ZEEBE_CLUSTER_ID"] = ZEEBE_CLUSTER_ID
+    os.environ["CAMUNDA_CLUSTER_ID"] = ZEEBE_CLUSTER_ID
+
+if ZEEBE_REGION:
+    os.environ["ZEEBE_REGION"] = ZEEBE_REGION
+    os.environ["CAMUNDA_REGION"] = ZEEBE_REGION
+
+
+print("[DEBUG] ZEEBE_CLIENT_ID geladen:", ZEEBE_CLIENT_ID is not None)
+print("[DEBUG] ZEEBE_CLIENT_SECRET geladen:", ZEEBE_CLIENT_SECRET is not None)
+print("[DEBUG] ZEEBE_CLUSTER_ID geladen:", ZEEBE_CLUSTER_ID)
+print("[DEBUG] ZEEBE_REGION geladen:", ZEEBE_REGION)
 
 
 # ------------------------------------------------------------
