@@ -70,9 +70,8 @@ async def main():
     print("[DEBUG] ZEEBE_CLUSTER_ID geladen:", ZEEBE_CLUSTER_ID)
     print("[DEBUG] ZEEBE_REGION geladen:", ZEEBE_REGION)
 
-    # WICHTIG:
-    # Channel und Worker müssen innerhalb von main() erstellt werden,
-    # sonst entsteht der Fehler "attached to a different loop".
+    # Wichtig: Channel und Worker innerhalb von main() erstellen,
+    # sonst kann es zu "attached to a different loop" kommen.
     channel = create_camunda_cloud_channel()
     worker = ZeebeWorker(channel)
 
@@ -88,67 +87,67 @@ async def main():
         betrag=None,
         datum=None
     ):
-    print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
-    print("[DEBUG] rechnungsNummer:", rechnungsNummer)
-    print("[DEBUG] lieferant:", lieferant)
-    print("[DEBUG] betrag:", betrag)
-    print("[DEBUG] datum:", datum)
+        print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
+        print("[DEBUG] rechnungsNummer:", rechnungsNummer)
+        print("[DEBUG] lieferant:", lieferant)
+        print("[DEBUG] betrag:", betrag)
+        print("[DEBUG] datum:", datum)
 
-    if not rechnungsNummer or not lieferant or betrag is None or not datum:
-        fehlermeldung = "Pflichtdaten fehlen: rechnungsNummer, lieferant, betrag oder datum"
-        print(f"[FEHLER] {fehlermeldung}")
+        if not rechnungsNummer or not lieferant or betrag is None or not datum:
+            fehlermeldung = "Pflichtdaten fehlen: rechnungsNummer, lieferant, betrag oder datum"
+            print(f"[FEHLER] {fehlermeldung}")
 
-        return {
-            "invoice_saved": False,
-            "invoice_error": fehlermeldung
-        }
+            return {
+                "invoice_saved": False,
+                "invoice_error": fehlermeldung
+            }
 
-    try:
-        grpc_channel = grpc.insecure_channel(f"{INVOICE_HOST}:{INVOICE_PORT}")
-        stub = invoice_pb2_grpc.InvoiceServiceStub(grpc_channel)
+        try:
+            grpc_channel = grpc.insecure_channel(f"{INVOICE_HOST}:{INVOICE_PORT}")
+            stub = invoice_pb2_grpc.InvoiceServiceStub(grpc_channel)
 
-        rechnung = invoice_pb2.Invoice(
-            id=str(rechnungsNummer),
-            supplier=str(lieferant),
-            amount=float(betrag),
-            date=str(datum)
-        )
+            rechnung = invoice_pb2.Invoice(
+                id=str(rechnungsNummer),
+                supplier=str(lieferant),
+                amount=float(betrag),
+                date=str(datum)
+            )
 
-        print(f"[gRPC] Sende Rechnung {rechnungsNummer} an {INVOICE_HOST}:{INVOICE_PORT} ...")
-        antwort = stub.SaveInvoice(rechnung)
-        print(f"[gRPC] Antwort vom Invoice Service: {antwort.message}")
+            print(f"[gRPC] Sende Rechnung {rechnungsNummer} an {INVOICE_HOST}:{INVOICE_PORT} ...")
+            antwort = stub.SaveInvoice(rechnung)
+            print(f"[gRPC] Antwort vom Invoice Service: {antwort.message}")
 
-        return {
-            "invoice_saved": True,
-            "invoice_message": antwort.message
-        }
+            return {
+                "invoice_saved": True,
+                "invoice_message": antwort.message
+            }
 
-    except ValueError:
-        fehlermeldung = f"Betrag ist keine gültige Zahl: {betrag}"
-        print(f"[FEHLER] {fehlermeldung}")
+        except ValueError:
+            fehlermeldung = f"Betrag ist keine gültige Zahl: {betrag}"
+            print(f"[FEHLER] {fehlermeldung}")
 
-        return {
-            "invoice_saved": False,
-            "invoice_error": fehlermeldung
-        }
+            return {
+                "invoice_saved": False,
+                "invoice_error": fehlermeldung
+            }
 
-    except grpc.RpcError as e:
-        fehlermeldung = e.details()
-        print(f"[FEHLER] gRPC-Fehler: {fehlermeldung}")
+        except grpc.RpcError as e:
+            fehlermeldung = e.details()
+            print(f"[FEHLER] gRPC-Fehler: {fehlermeldung}")
 
-        return {
-            "invoice_saved": False,
-            "invoice_error": fehlermeldung
-        }
+            return {
+                "invoice_saved": False,
+                "invoice_error": fehlermeldung
+            }
 
-    except Exception as e:
-        fehlermeldung = str(e)
-        print(f"[FEHLER] Unerwarteter Fehler: {fehlermeldung}")
+        except Exception as e:
+            fehlermeldung = str(e)
+            print(f"[FEHLER] Unerwarteter Fehler: {fehlermeldung}")
 
-        return {
-            "invoice_saved": False,
-            "invoice_error": fehlermeldung
-        }
+            return {
+                "invoice_saved": False,
+                "invoice_error": fehlermeldung
+            }
 
     # ------------------------------------------------------------
     # TASK: Rechnungsdaten validieren
@@ -183,11 +182,11 @@ async def main():
     # ------------------------------------------------------------
 
     @worker.task(task_type="payment-service")
-    async def send_payment_notification(job_variables: dict):
+    async def send_payment_notification(rechnungsNummer=None):
         print("\n[Camunda-Worker] Task 'payment-service' empfangen.")
-        print("[DEBUG] Empfangene Variablen:", job_variables)
+        print("[DEBUG] rechnungsNummer:", rechnungsNummer)
 
-        rechnungsnummer = job_variables.get("rechnungsNummer", "UNBEKANNT")
+        rechnungsnummer = rechnungsNummer or "UNBEKANNT"
 
         try:
             connection = pika.BlockingConnection(
