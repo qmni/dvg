@@ -4,8 +4,7 @@ import time
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
-host = os.getenv("HOST")
+host = os.getenv("HOST") or "localhost"
 
 def process_payment(nachricht):
     print("Zahlung empfangen:", nachricht)

@@ -7,8 +7,8 @@ import os
 
 load_dotenv()
 
-host = os.getenv("INVOICE_HOST")
-port = int(os.getenv("INVOICE_PORT"))
+host = os.getenv("INVOICE_HOST") or "0.0.0.0"
+port = int(os.getenv("INVOICE_PORT") or 50052)
 
 # Speicher
 invoices = []
