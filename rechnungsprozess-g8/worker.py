@@ -8,7 +8,8 @@ from pathlib import Path
 
 import grpc
 from dotenv import load_dotenv
-from pyzeebe import ZeebeWorker, create_camunda_cloud_channel, BusinessError
+from pyzeebe import ZeebeWorker, create_camunda_cloud_channel
+from pyzeebe.errors import BusinessError
 
 try:
     import invoice_pb2
@@ -61,6 +62,9 @@ async def main():
     channel = create_camunda_cloud_channel()
     worker = ZeebeWorker(channel)
 
+    # ------------------------------------------------------------
+    # TASK: Rechnung ins Invoice Service speichern
+    # ------------------------------------------------------------
     @worker.task(task_type="save-invoice")
     async def save_invoice(id=None, supplier=None, amount=None, date=None):
         print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
@@ -72,10 +76,7 @@ async def main():
         if not id or not supplier or amount is None or not date:
             fehlermeldung = "Pflichtdaten fehlen: id, supplier, amount oder date"
             print(f"[FEHLER] {fehlermeldung}")
-            raise BusinessError(
-                error_code="INVOICE_SAVE_FAILED",
-                error_message=fehlermeldung
-            )
+            raise BusinessError("INVOICE_SAVE_FAILED", fehlermeldung)
 
         try:
             grpc_channel = grpc.insecure_channel(f"{INVOICE_HOST}:{INVOICE_PORT}")
@@ -101,31 +102,21 @@ async def main():
         except ValueError:
             fehlermeldung = f"amount ist keine gültige Zahl: {amount}"
             print(f"[FEHLER] {fehlermeldung}")
-            raise BusinessError(
-                error_code="INVOICE_SAVE_FAILED",
-                error_message=fehlermeldung
-            )
+            raise BusinessError("INVOICE_SAVE_FAILED", fehlermeldung)
 
         except grpc.RpcError as e:
             fehlermeldung = e.details() or str(e)
             print(f"[FEHLER] gRPC-Fehler: {fehlermeldung}")
-            raise BusinessError(
-                error_code="INVOICE_SAVE_FAILED",
-                error_message=fehlermeldung
-            )
+            raise BusinessError("INVOICE_SAVE_FAILED", fehlermeldung)
 
         except Exception as e:
             fehlermeldung = str(e)
             print(f"[FEHLER] Unerwarteter Fehler: {fehlermeldung}")
-            raise BusinessError(
-                error_code="INVOICE_SAVE_FAILED",
-                error_message=fehlermeldung
-            )
+            raise BusinessError("INVOICE_SAVE_FAILED", fehlermeldung)
 
     @worker.task(task_type="rechnungsdaten-validieren")
     async def task_validation():
         print("[Camunda-Worker] Task 'rechnungsdaten-validieren' empfangen.")
-
         return {
             "complianceCheckNotwendig": False
         }
@@ -133,7 +124,6 @@ async def main():
     @worker.task(task_type="erp-system")
     async def task_erp():
         print("[Camunda-Worker] Task 'erp-system' empfangen.")
-
         return {
             "manuelleFreigabeNoetig": False,
             "erp_erfolgreich": True
@@ -141,16 +131,17 @@ async def main():
 
     # ------------------------------------------------------------
     # TASK: Zahlungsauftrag an Payment Service senden
-    # BPMN Task Type: payment-service
-    # Nutzt bevorzugt Camunda-Variable id als invoiceId
     # ------------------------------------------------------------
-
     @worker.task(task_type="send-payment-order")
-    async def send_payment_notification(id=None):
+    async def send_payment_notification(**kwargs):
         print("\n[Camunda-Worker] Task 'send-payment-order' empfangen.")
-        print("[DEBUG] id:", id)
+        print("[DEBUG] Empfangene Variablen vom Worker:", kwargs)
 
-        invoice_id = id or "UNBEKANNT"
+        # Sicheres Auslesen aller möglichen Schreibweisen
+        invoice_id = kwargs.get('id') or kwargs.get('invoiceId') or "UNBEKANNT"
+        supplier_name = kwargs.get('supplier') or kwargs.get('Lieferant') or "N/A"
+        invoice_amount = kwargs.get('amount') or kwargs.get('Betrag') or 0.0
+        invoice_date = kwargs.get('date') or kwargs.get('Datum') or "N/A"
 
         try:
             connection = pika.BlockingConnection(
@@ -159,8 +150,12 @@ async def main():
             rabbit_channel = connection.channel()
             rabbit_channel.queue_declare(queue="payment_queue")
 
+            # Hier packen wir nun garantiert alle Daten ins Paket!
             zahlungs_daten = {
-                "invoiceId": invoice_id
+                "invoiceId": invoice_id,
+                "supplier": supplier_name,
+                "amount": float(invoice_amount) if invoice_amount else 0.0,
+                "date": invoice_date
             }
 
             nachricht_json = json.dumps(zahlungs_daten)
@@ -171,7 +166,7 @@ async def main():
                 body=nachricht_json
             )
 
-            print(f"[RabbitMQ] Zahlungsauftrag für Rechnung {invoice_id} gesendet.")
+            print(f"[RabbitMQ] Vollständige Daten für Rechnung {invoice_id} an Queue übergeben.")
             connection.close()
 
             return {
@@ -182,7 +177,6 @@ async def main():
         except Exception as e:
             fehlermeldung = str(e)
             print(f"[FEHLER] RabbitMQ nicht erreichbar: {fehlermeldung}")
-
             return {
                 "payment_message_sent": False,
                 "payment_error": fehlermeldung
