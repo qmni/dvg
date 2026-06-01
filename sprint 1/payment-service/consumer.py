@@ -10,7 +10,7 @@ def process_payment(nachricht):
     print("Zahlung empfangen:", nachricht)
 
     # Simuliere die Zahlungsabwicklung
-    print(f"Zahle {nachricht['invoiceId']}...")
+    print(f"Zahle {nachricht['Betrag']}...")
     time.sleep(2)  # Simuliere Verzögerung
 
     print("Zahlung erfolgreich abgeschlossen!\n")

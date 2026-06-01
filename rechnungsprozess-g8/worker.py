@@ -197,9 +197,9 @@ async def main():
     # Nutzt bevorzugt Camunda-Variable id als invoiceId
     # ------------------------------------------------------------
 
-    @worker.task(task_type="payment-service")
+    @worker.task(task_type="send-payment-order")
     async def send_payment_notification(id=None):
-        print("\n[Camunda-Worker] Task 'payment-service' empfangen.")
+        print("\n[Camunda-Worker] Task 'send-payment-order' empfangen.")
         print("[DEBUG] id:", id)
 
         invoice_id = id or "UNBEKANNT"
