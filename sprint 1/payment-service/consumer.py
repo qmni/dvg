@@ -9,7 +9,7 @@ host = os.getenv("HOST") or "localhost"
 
 def process_payment(nachricht):
     print("=" * 40)
-    print("📥 NEUE ZAHLUNG EMPFANGEN")
+    print(" NEUE ZAHLUNG EMPFANGEN")
     print("-" * 40)
     
     # Hier holen wir die Werte mit den exakten Keys, die der Worker sendet
@@ -18,16 +18,16 @@ def process_payment(nachricht):
     lieferant = nachricht.get('supplier', 'N/A')
     datum = nachricht.get('date', 'N/A')
     
-    print(f"📄 Rechnungs-ID: {invoice_id}")
-    print(f"🏢 Lieferant:    {lieferant}")
-    print(f"💰 Betrag:       {betrag:.2f} €")
-    print(f"📅 Datum:        {datum}")
+    print(f" Rechnungs-ID: {invoice_id}")
+    print(f" Lieferant:    {lieferant}")
+    print(f" Betrag:       {betrag:.2f} €")
+    print(f" Datum:        {datum}")
     print("-" * 40)
 
     print(f"Verarbeite Zahlung für Rechnung {invoice_id}...")
     time.sleep(2)  # Simuliere Verzögerung
 
-    print("✅ Zahlung erfolgreich abgeschlossen!")
+    print(" Zahlung erfolgreich abgeschlossen!")
     print("=" * 40 + "\n")
 
 
