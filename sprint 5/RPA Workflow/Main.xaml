@@ -1,0 +1,230 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="Main" this:Main.in_id="2026-002" this:Main.in_supplier="Robert GmbH" this:Main.in_amount="1.50" this:Main.in_date="12-04-2026"
+ xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+ xmlns:s="clr-namespace:System;assembly=System.Private.CoreLib"
+ xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+ xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+ xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib"
+ xmlns:this="clr-namespace:"
+ xmlns:ui="http://schemas.uipath.com/workflow/activities"
+ xmlns:uix="http://schemas.uipath.com/workflow/activities/uix"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:Members>
+    <x:Property Name="in_id" Type="InArgument(x:String)" />
+    <x:Property Name="in_supplier" Type="InArgument(x:String)" />
+    <x:Property Name="in_amount" Type="InArgument(x:String)" />
+    <x:Property Name="in_date" Type="InArgument(x:String)" />
+  </x:Members>
+  <TextExpression.NamespacesForImplementation>
+    <scg:List x:TypeArguments="x:String" Capacity="35">
+      <x:String>System.Security</x:String>
+      <x:String>System</x:String>
+      <x:String>UiPath.UIAutomationNext.Enums</x:String>
+      <x:String>UiPath.UIAutomationNext.Activities</x:String>
+      <x:String>UiPath.UIAutomationNext</x:String>
+      <x:String>System.ComponentModel</x:String>
+      <x:String>UiPath.UIAutomationNext.Contracts</x:String>
+      <x:String>UiPath.UIAutomationNext.Models</x:String>
+      <x:String>UiPath.Core</x:String>
+      <x:String>System.Runtime.Serialization</x:String>
+      <x:String>UiPath.Platform.ObjectLibrary</x:String>
+      <x:String>UiPath.Platform.SyncObjects</x:String>
+      <x:String>UiPath.Shared.Activities</x:String>
+      <x:String>System.Activities</x:String>
+      <x:String>UiPath.Platform.ResourceHandling</x:String>
+      <x:String>UiPath.UIAutomationNext.Activities.Design.ViewModels.Activities.Base</x:String>
+      <x:String>System.Activities.Statements</x:String>
+      <x:String>System.Collections.ObjectModel</x:String>
+      <x:String>System.Collections.Generic</x:String>
+      <x:String>System.Collections</x:String>
+      <x:String>UiPath.UIAutomationNext.Activities.Design.Services.Contracts</x:String>
+      <x:String>UiPath.Core.Activities</x:String>
+      <x:String>System.Activities.Expressions</x:String>
+      <x:String>System.Activities.Validation</x:String>
+      <x:String>System.Activities.XamlIntegration</x:String>
+      <x:String>Microsoft.VisualBasic</x:String>
+      <x:String>Microsoft.VisualBasic.Activities</x:String>
+      <x:String>System.Data</x:String>
+      <x:String>System.Diagnostics</x:String>
+      <x:String>System.IO</x:String>
+      <x:String>System.Linq</x:String>
+      <x:String>System.Windows.Markup</x:String>
+      <x:String>Newtonsoft.Json</x:String>
+      <x:String>Newtonsoft.Json.Linq</x:String>
+      <x:String>UiPath.UIAutomationCore.Contracts</x:String>
+    </scg:List>
+  </TextExpression.NamespacesForImplementation>
+  <TextExpression.ReferencesForImplementation>
+    <scg:List x:TypeArguments="AssemblyReference" Capacity="16">
+      <AssemblyReference>System.Activities</AssemblyReference>
+      <AssemblyReference>Microsoft.VisualBasic</AssemblyReference>
+      <AssemblyReference>System</AssemblyReference>
+      <AssemblyReference>System.Linq</AssemblyReference>
+      <AssemblyReference>System.Xaml</AssemblyReference>
+      <AssemblyReference>System.Net.Primitives</AssemblyReference>
+      <AssemblyReference>System.Runtime.InteropServices</AssemblyReference>
+      <AssemblyReference>Newtonsoft.Json</AssemblyReference>
+      <AssemblyReference>UiPath.System.Activities</AssemblyReference>
+      <AssemblyReference>System.Private.CoreLib</AssemblyReference>
+      <AssemblyReference>UiPath.UIAutomationNext.Activities</AssemblyReference>
+      <AssemblyReference>System.Drawing.Primitives</AssemblyReference>
+      <AssemblyReference>UiPath.Platform</AssemblyReference>
+      <AssemblyReference>System.ObjectModel</AssemblyReference>
+    </scg:List>
+  </TextExpression.ReferencesForImplementation>
+  <Sequence sap:VirtualizedContainerService.HintSize="356,732" sap2010:WorkflowViewState.IdRef="Sequence_1">
+    <Sequence.Variables>
+      <Variable x:TypeArguments="ui:UiElement" Name="outputElement_1">
+        <sap:WorkflowViewStateService.ViewState>
+          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+            <x:String x:Key="SourceIdRef">NClick_1</x:String>
+            <x:String x:Key="SourcePropertyName">OutUiElement</x:String>
+          </scg:Dictionary>
+        </sap:WorkflowViewStateService.ViewState>
+      </Variable>
+      <Variable x:TypeArguments="s:DateOnly" Default="2026-12-03" Name="Rechnungsdatum" />
+      <Variable x:TypeArguments="x:String" Name="Beschreibung">
+        <sap:WorkflowViewStateService.ViewState>
+          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+            <x:String x:Key="Description">""</x:String>
+          </scg:Dictionary>
+        </sap:WorkflowViewStateService.ViewState>
+      </Variable>
+      <Variable x:TypeArguments="x:String" Default="[&quot;2026-001&quot;]" Name="Rechnungsnummer" />
+      <Variable x:TypeArguments="x:String" Default="[&quot;Max Mustermann GmbH&quot;]" Name="Lieferantenname" />
+      <Variable x:TypeArguments="x:String" Default="[&quot;K-1001&quot;]" Name="Kundennummer" />
+      <Variable x:TypeArguments="x:String" Default="[&quot;14 Tage brutto&quot;]" Name="Zahlungsziel" />
+      <Variable x:TypeArguments="x:String" Default="[&quot;------&quot;]" Name="Bemerkung" />
+      <Variable x:TypeArguments="x:Int32" Default="[4]" Name="Stückzahlen" />
+      <Variable x:TypeArguments="x:String" Default="[&quot;Stk&quot;]" Name="Einheit" />
+    </Sequence.Variables>
+    <sap:WorkflowViewStateService.ViewState>
+      <scg:Dictionary x:TypeArguments="x:String, x:Object">
+        <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+      </scg:Dictionary>
+    </sap:WorkflowViewStateService.ViewState>
+    <ui:ManualTrigger Result="{x:Null}" DisplayName="Manual Trigger" sap2010:WorkflowViewState.IdRef="ManualTrigger_1" />
+    <uix:NApplicationCard AttachMode="ByInstance" DisplayName="Use Browser Edge: ERP – Rechnungserfassung" HealingAgentBehavior="Job" sap2010:WorkflowViewState.IdRef="NApplicationCard_1" IsDisplayNameAuto="True" ScopeGuid="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Version="V2">
+      <uix:NApplicationCard.Body>
+        <ActivityAction x:TypeArguments="x:Object">
+          <ActivityAction.Argument>
+            <DelegateInArgument x:TypeArguments="x:Object" Name="WSSessionData" />
+          </ActivityAction.Argument>
+          <Sequence DisplayName="Do" sap2010:WorkflowViewState.IdRef="Sequence_2">
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Rechnungsnummer'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_1" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, in_id)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="388, 214, 733, 36" ElementType="InputBox" ElementVisibilityArgument="Interactive" FuzzySelectorArgument="&lt;webctrl tag='INPUT' id='invoiceNumber' type='text' class='' placeholder='z. B. 2026-001' aaname='Rechnungsnummer' matching:id='fuzzy' fuzzylevel:id='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' /&gt;" Guid="a2ba9654-ec4f-400c-acba-b2df582e2e36" InformativeScreenshot="0bcf3dc4be69735fb736c1b3ee8753d2.jpg" IsResponsive="True" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="FuzzySelector" Version="V6" WaitForReadyArgument="Interactive">
+                  <uix:TargetAnchorable.Anchors>
+                    <scg:List x:TypeArguments="uix:ITarget" Capacity="1">
+                      <uix:Target DesignTimeRectangle="388, 187, 733, 23" ElementType="Text" FuzzySelectorArgument="&lt;webctrl tag='LABEL' type='' class='' aaname='Rechnungsnummer' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' check:innerText='Rechnungsnummer' /&gt;" Guid="db93ec6a-cbfc-4334-a1f7-6df05343473d" SearchSteps="FuzzySelector" />
+                    </scg:List>
+                  </uix:TargetAnchorable.Anchors>
+                </uix:TargetAnchorable>
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Rechnungsdatum'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_2" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, in_date)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="1099, 172, 778, 32" ElementType="InputBox" ElementVisibilityArgument="Interactive" FuzzySelectorArgument="&lt;webctrl tag='INPUT' id='invoiceDate' type='date' class='' aaname='Rechnungsdatum' matching:id='fuzzy' fuzzylevel:id='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' /&gt;" Guid="7bd44d79-3d76-4e45-98ad-f24ba2fefe5e" InformativeScreenshot="3add9c68a703dd4ce4ef457aedb75b60.jpg" IsResponsive="True" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="FuzzySelector" Version="V6" WaitForReadyArgument="Interactive">
+                  <uix:TargetAnchorable.Anchors>
+                    <scg:List x:TypeArguments="uix:ITarget" Capacity="1">
+                      <uix:Target DesignTimeRectangle="1099, 151, 778, 18" ElementType="Text" FuzzySelectorArgument="&lt;webctrl tag='LABEL' aaname='Rechnungsdatum' type='' class='' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' check:innerText='Rechnungsdatum' /&gt;" Guid="17d3e3cb-3189-4b82-8223-214442bf72fb" SearchSteps="FuzzySelector" />
+                    </scg:List>
+                  </uix:TargetAnchorable.Anchors>
+                </uix:TargetAnchorable>
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Lieferantenname'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_3" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, in_supplier)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="310, 235, 779, 29" ElementType="InputBox" ElementVisibilityArgument="Interactive" FuzzySelectorArgument="&lt;webctrl tag='INPUT' id='customerName' type='text' class='' placeholder='z. B. Muster GmbH' aaname='Lieferantenname' matching:id='fuzzy' fuzzylevel:id='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' /&gt;" Guid="21d2c84d-6782-4a29-8174-e226de616fbd" InformativeScreenshot="78fd37564e8378c707d1648f609b3117.jpg" IsResponsive="True" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="FuzzySelector" Version="V6" WaitForReadyArgument="Interactive">
+                  <uix:TargetAnchorable.Anchors>
+                    <scg:List x:TypeArguments="uix:ITarget" Capacity="1">
+                      <uix:Target DesignTimeRectangle="310, 214, 779, 18" ElementType="Text" FuzzySelectorArgument="&lt;webctrl tag='LABEL' aaname='Lieferantenname' type='' class='' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' check:innerText='Lieferantenname' /&gt;" Guid="57171cf3-6baf-49dc-b7c3-6debc022a156" SearchSteps="FuzzySelector" />
+                    </scg:List>
+                  </uix:TargetAnchorable.Anchors>
+                </uix:TargetAnchorable>
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Kundennummer'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_4" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, Kundennummer)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="1099, 235, 778, 29" ElementType="InputBox" ElementVisibilityArgument="Interactive" FuzzySelectorArgument="&lt;webctrl tag='INPUT' id='customerNumber' type='text' class='' placeholder='z. B. K-1001' aaname='Kundennummer' matching:id='fuzzy' fuzzylevel:id='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' /&gt;" Guid="1cd81c68-97b1-4f1d-a13c-4b60f650544a" InformativeScreenshot="6c8bdae625fce039a44b282f08135db8.jpg" IsResponsive="True" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="FuzzySelector" Version="V6" WaitForReadyArgument="Interactive">
+                  <uix:TargetAnchorable.Anchors>
+                    <scg:List x:TypeArguments="uix:ITarget" Capacity="1">
+                      <uix:Target DesignTimeRectangle="1099, 214, 778, 18" ElementType="Text" FuzzySelectorArgument="&lt;webctrl tag='LABEL' aaname='Kundennummer' type='' class='' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' check:innerText='Kundennummer' /&gt;" Guid="183ebdc2-d1eb-444a-9915-9d7a127f9e74" SearchSteps="FuzzySelector" />
+                    </scg:List>
+                  </uix:TargetAnchorable.Anchors>
+                </uix:TargetAnchorable>
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Zahlungsziel'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_5" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, Zahlungsziel)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="310, 295, 779, 29" ElementType="InputBox" ElementVisibilityArgument="Interactive" FuzzySelectorArgument="&lt;webctrl tag='INPUT' id='paymentTerms' type='text' class='' placeholder='z. B. 14 Tage netto' aaname='Zahlungsziel' matching:id='fuzzy' fuzzylevel:id='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' /&gt;" Guid="66ee1a9e-5e31-4e3a-8bcd-e76df5487ea5" InformativeScreenshot="4a7d6221113bb851937e66c5e0d83c36.jpg" IsResponsive="True" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="FuzzySelector" Version="V6" WaitForReadyArgument="Interactive">
+                  <uix:TargetAnchorable.Anchors>
+                    <scg:List x:TypeArguments="uix:ITarget" Capacity="1">
+                      <uix:Target DesignTimeRectangle="310, 274, 779, 18" ElementType="Text" FuzzySelectorArgument="&lt;webctrl tag='LABEL' aaname='Zahlungsziel' type='' class='' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' check:innerText='Zahlungsziel' /&gt;" Guid="6577ccb9-77f5-4991-8ed2-d88d278e1862" SearchSteps="FuzzySelector" />
+                    </scg:List>
+                  </uix:TargetAnchorable.Anchors>
+                </uix:TargetAnchorable>
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Bemerkungen'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_6" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, Bemerkung)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="1099, 295, 778, 29" ElementType="InputBox" ElementVisibilityArgument="Interactive" FuzzySelectorArgument="&lt;webctrl tag='INPUT' id='invoiceNotes' type='text' class='' placeholder='optionale Hinweise' aaname='Bemerkungen' matching:id='fuzzy' fuzzylevel:id='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' /&gt;" Guid="c40e6b34-92e3-4659-8910-ebb03a7c98b7" InformativeScreenshot="3933d78ef142973923694d811996ff70.jpg" IsResponsive="True" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="FuzzySelector" Version="V6" WaitForReadyArgument="Interactive">
+                  <uix:TargetAnchorable.Anchors>
+                    <scg:List x:TypeArguments="uix:ITarget" Capacity="1">
+                      <uix:Target DesignTimeRectangle="1099, 274, 778, 18" ElementType="Text" FuzzySelectorArgument="&lt;webctrl tag='LABEL' aaname='Bemerkungen' type='' class='' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' matching:class='fuzzy' fuzzylevel:class='0.0' check:innerText='Bemerkungen' /&gt;" Guid="5f7cd2b0-dc50-452a-b9af-df2976bee734" SearchSteps="FuzzySelector" />
+                    </scg:List>
+                  </uix:TargetAnchorable.Anchors>
+                </uix:TargetAnchorable>
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'amount'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_7" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, in_amount)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="1208, 462, 271, 29" ElementType="InputBox" ElementVisibilityArgument="Interactive" FullSelectorArgument="&lt;webctrl tag='TABLE' /&gt;&lt;webctrl tag='INPUT' tableRow='2' type='number' class='price' /&gt;" Guid="b41d564b-aff2-4c07-ac24-3ad7bb8fe9e1" InformativeScreenshot="41703b3feadfa498bba8e696cf829958.jpg" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="Selector" Version="V6" WaitForReadyArgument="Interactive" />
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Einheit'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_10" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, Einheit)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="969, 576, 250, 37" ElementType="InputBox" ElementVisibilityArgument="Interactive" FullSelectorArgument="&lt;webctrl tag='TABLE' /&gt;&lt;webctrl tag='INPUT' tableRow='2' type='text' class='unit' /&gt;" Guid="3c3453d8-1c9f-4e5d-896b-83118f1d1579" InformativeScreenshot="d16431d01f069d6a051684253356cdcb.jpg" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="Selector" Version="V6" WaitForReadyArgument="Interactive" />
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Stückzahlen'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_8" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, Stückzahlen)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="708, 576, 250, 37" ElementType="InputBox" ElementVisibilityArgument="Interactive" FullSelectorArgument="&lt;webctrl tag='TABLE' /&gt;&lt;webctrl tag='INPUT' tableRow='2' type='number' /&gt;" Guid="d13b2aa8-2b36-4dd7-985b-a239ec0c5d3e" InformativeScreenshot="7be997725f26738cb40b8e510bc672ad.jpg" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="Selector" Version="V6" WaitForReadyArgument="Interactive" />
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Label'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_9" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="[string.Format(&quot;{0}&quot;, Beschreibung)]" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="448, 576, 249, 37" ElementType="InputBox" ElementVisibilityArgument="Interactive" FuzzySelectorArgument="&lt;webctrl tag='TABLE' /&gt;&lt;webctrl tag='INPUT' type='text' class='desc' aaname='' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' /&gt;" Guid="71705d38-70ed-4fd0-adcb-cfbe1c2e74d2" InformativeScreenshot="3634c5bfcf6d547e2ecf1c15eb1423d5.jpg" IsResponsive="True" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="FuzzySelector" Version="V6" WaitForReadyArgument="Interactive">
+                  <uix:TargetAnchorable.Anchors>
+                    <scg:List x:TypeArguments="uix:ITarget" Capacity="1">
+                      <uix:Target DesignTimeRectangle="388, 571, 54, 47" ElementType="Text" FuzzySelectorArgument="&lt;webctrl tag='TABLE' /&gt;&lt;webctrl tag='TD' type='' class='pos' aaname='1' matching:class='fuzzy' fuzzylevel:class='0.0' matching:aaname='fuzzy' fuzzylevel:aaname='0.0' check:innerText='1' /&gt;" Guid="a3778db5-123e-4b93-8e67-68179bb36f6a" SearchSteps="FuzzySelector" />
+                    </scg:List>
+                  </uix:TargetAnchorable.Anchors>
+                </uix:TargetAnchorable>
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NClick ActivateBefore="True" ClickType="Single" DisplayName="Click '+ Position hinzufügen'" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NClick_2" KeyModifiers="None" MouseButton="Left" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Version="V5">
+              <uix:NClick.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="388, 490, 197, 33" ElementType="Button" ElementVisibilityArgument="Interactive" FullSelectorArgument="&lt;webctrl tag='BUTTON' aaname='+ Position hinzufügen' /&gt;" Guid="861ac959-6714-4dad-9fec-0841bf3b3ede" InformativeScreenshot="14c8f2ec0720b82b5569162bd220188a.jpg" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="Selector" Version="V6" WaitForReadyArgument="Interactive" />
+              </uix:NClick.Target>
+            </uix:NClick>
+            <uix:NTypeInto ActivateBefore="True" ClickBeforeMode="Single" ClipboardMode="Never" DisplayName="Type Into 'Input'" EmptyFieldMode="SingleLine" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NTypeInto_11" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Text="2.40" Version="V5">
+              <uix:NTypeInto.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="1230, 624, 249, 36" ElementType="InputBox" ElementVisibilityArgument="Interactive" FullSelectorArgument="&lt;webctrl tag='TABLE' /&gt;&lt;webctrl tag='INPUT' tableRow='3' type='number' class='price' /&gt;" Guid="6a5f5433-9312-4688-85a9-cbade2cd9f41" InformativeScreenshot="e7c357f4f774c44bab69c179a3030370.jpg" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="Selector" Version="V6" WaitForReadyArgument="Interactive" />
+              </uix:NTypeInto.Target>
+            </uix:NTypeInto>
+            <uix:NClick ActivateBefore="True" ClickType="Single" DisplayName="Click 'Rechnung speichern / ak…'" HealingAgentBehavior="SameAsCard" sap2010:WorkflowViewState.IdRef="NClick_1" KeyModifiers="None" MouseButton="Left" OutUiElement="[outputElement_1]" ScopeIdentifier="03ac3ca2-5c44-4375-8b7c-2cd9aa8eaff4" Version="V5">
+              <uix:NClick.Target>
+                <uix:TargetAnchorable BrowserURL="anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" DesignTimeRectangle="44, 228, 287, 54" ElementType="Button" ElementVisibilityArgument="Interactive" FullSelectorArgument="&lt;webctrl tag='BUTTON' aaname='Rechnung speichern / aktualisieren' /&gt;" Guid="4efd6045-f30d-491f-8a2e-c16fdc633827" InformativeScreenshot="2b804bd5bad2fa11ef8aa723bc96fc76.jpg" ScopeSelectorArgument="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" SearchSteps="Selector" Version="V6" WaitForReadyArgument="Interactive" />
+              </uix:NClick.Target>
+            </uix:NClick>
+            <Delay DisplayName="Delay 1" Duration="00:00:20" sap2010:WorkflowViewState.IdRef="Delay_2" />
+          </Sequence>
+        </ActivityAction>
+      </uix:NApplicationCard.Body>
+      <uix:NApplicationCard.TargetApp>
+        <uix:TargetApp Area="0, 0, 0, 0" BrowserType="Edge" InformativeScreenshot="331c9c95ca142c7d9b68f5c59829dd0e.jpg" Selector="&lt;html title='ERP – Rechnungserfassung' app='msedge.exe' /&gt;" Url="https://anhe0003.github.io/this-and-that/ERP_Rechnungserfassung.html" Version="V3" />
+      </uix:NApplicationCard.TargetApp>
+    </uix:NApplicationCard>
+  </Sequence>
+</Activity>

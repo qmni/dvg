@@ -1,0 +1,5 @@
+{
+  "Name": "RPA Workflow",
+  "ProjectType": "Process",
+  "MainFile": "Main.xaml"
+}
