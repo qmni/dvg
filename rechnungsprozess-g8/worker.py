@@ -63,7 +63,54 @@ async def main():
     worker = ZeebeWorker(channel)
 
     # ------------------------------------------------------------
+    # SPRINT 6 TASK: AI-Extraktion über n8n abrufen
+    # BPMN Task Type: call-n8n
+    #
+    # Aktuell Dummy-JSON.
+    # ------------------------------------------------------------
+    @worker.task(task_type="call-n8n")
+    async def call_n8n():
+        print("\n[Camunda-Worker] Task 'call-n8n' empfangen.")
+        print("[n8n-Dummy] Simuliere extrahierte Rechnungsdaten aus PDF...")
+
+        result = {
+            "id": "TEST-001",
+            "supplier": "Testlieferant GmbH",
+            "amount": "999.99",
+            "date": "2026-06-10",
+            "positions": [
+                {
+                    "description": "Testposition",
+                    "quantity": "1",
+                    "unit": "Stück",
+                    "unitPrice": "999.99",
+                    "tax": "19%"
+                }
+            ]
+        }
+
+        mapped_variables = {
+            "id": result["id"],
+            "supplier": result["supplier"],
+            "amount": result["amount"],
+            "date": result["date"],
+            "position_description": result["positions"][0]["description"],
+            "position_quantity": result["positions"][0]["quantity"],
+            "position_unit": result["positions"][0]["unit"],
+            "position_unit_price": result["positions"][0]["unitPrice"],
+            "position_tax": result["positions"][0]["tax"]
+        }
+
+        print("[n8n-Dummy] Gemappte Camunda-Variablen:")
+        print(json.dumps(mapped_variables, indent=2, ensure_ascii=False))
+
+        return mapped_variables
+
+    # ------------------------------------------------------------
     # TASK: Rechnung ins Invoice Service speichern
+    # BPMN Task Type: save-invoice
+    # Erwartete Variablen aus Kontrollformular:
+    # id, supplier, amount, date
     # ------------------------------------------------------------
     @worker.task(task_type="save-invoice")
     async def save_invoice(id=None, supplier=None, amount=None, date=None):
@@ -131,17 +178,17 @@ async def main():
 
     # ------------------------------------------------------------
     # TASK: Zahlungsauftrag an Payment Service senden
+    # BPMN Task Type: send-payment-order
     # ------------------------------------------------------------
     @worker.task(task_type="send-payment-order")
     async def send_payment_notification(**kwargs):
         print("\n[Camunda-Worker] Task 'send-payment-order' empfangen.")
         print("[DEBUG] Empfangene Variablen vom Worker:", kwargs)
 
-        # Sicheres Auslesen aller möglichen Schreibweisen
-        invoice_id = kwargs.get('id') or kwargs.get('invoiceId') or "UNBEKANNT"
-        supplier_name = kwargs.get('supplier') or kwargs.get('Lieferant') or "N/A"
-        invoice_amount = kwargs.get('amount') or kwargs.get('Betrag') or 0.0
-        invoice_date = kwargs.get('date') or kwargs.get('Datum') or "N/A"
+        invoice_id = kwargs.get("id") or kwargs.get("invoiceId") or "UNBEKANNT"
+        supplier_name = kwargs.get("supplier") or kwargs.get("Lieferant") or "N/A"
+        invoice_amount = kwargs.get("amount") or kwargs.get("Betrag") or 0.0
+        invoice_date = kwargs.get("date") or kwargs.get("Datum") or "N/A"
 
         try:
             connection = pika.BlockingConnection(
@@ -150,7 +197,6 @@ async def main():
             rabbit_channel = connection.channel()
             rabbit_channel.queue_declare(queue="payment_queue")
 
-            # Hier packen wir nun garantiert alle Daten ins Paket!
             zahlungs_daten = {
                 "invoiceId": invoice_id,
                 "supplier": supplier_name,
