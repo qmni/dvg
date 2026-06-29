@@ -1,251 +1,162 @@
-import asyncio
-import logging
-import json
-import os
-import pika
-import sys
-from pathlib import Path
+import asyncio 
+import logging 
+import json 
+import os 
+import pika 
+import sys 
+import aiohttp  # Für den n8n-Aufruf 
+from pathlib import Path 
+import grpc 
+from dotenv import load_dotenv 
+from pyzeebe import ZeebeWorker, create_camunda_cloud_channel 
+from pyzeebe.errors import BusinessError 
 
-import grpc
-from dotenv import load_dotenv
-from pyzeebe import ZeebeWorker, create_camunda_cloud_channel
-from pyzeebe.errors import BusinessError
+try: 
+    import invoice_pb2 
+    import invoice_pb2_grpc 
+except ImportError: 
+    pass 
 
-try:
-    import invoice_pb2
-    import invoice_pb2_grpc
-except ImportError:
-    pass
+if sys.platform == "win32": 
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy()) 
 
+# 1. Pfad zur .env Datei explizit definieren und laden
+BASE_DIR = Path(__file__).resolve().parent 
+load_dotenv(BASE_DIR / ".env") 
 
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+logging.basicConfig(level=logging.INFO) 
 
+# Verbindungseinstellungen für andere Services
+INVOICE_HOST = os.getenv("INVOICE_HOST", "localhost") 
+INVOICE_PORT = os.getenv("INVOICE_PORT", "50052") 
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost") 
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://localhost:5678/webhook/deine-id") 
 
-BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+# Camunda Konfiguration aus der .env laden
+ZEEBE_CLIENT_ID = os.getenv("ZEEBE_CLIENT_ID") or os.getenv("CAMUNDA_CLIENT_ID") 
+ZEEBE_CLIENT_SECRET = os.getenv("ZEEBE_CLIENT_SECRET") or os.getenv("CAMUNDA_CLIENT_SECRET") 
+ZEEBE_CLUSTER_ID = os.getenv("ZEEBE_CLUSTER_ID") or os.getenv("CAMUNDA_CLUSTER_ID") 
+ZEEBE_REGION = os.getenv("ZEEBE_REGION") or os.getenv("CAMUNDA_REGION") 
 
-logging.basicConfig(level=logging.INFO)
+async def main(): 
+    # Sicherheits-Check für dich im Terminal
+    print(f"[DEBUG] Lade aus .env... Cluster-ID: {ZEEBE_CLUSTER_ID}")
 
-INVOICE_HOST = os.getenv("INVOICE_HOST", "localhost")
-INVOICE_PORT = os.getenv("INVOICE_PORT", "50052")
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+    if not ZEEBE_CLUSTER_ID:
+        print("!!! FEHLER: ZEEBE_CLUSTER_ID ist leer. Die .env wurde nicht geladen oder ist falsch!")
+        sys.exit(1)
 
-ZEEBE_CLIENT_ID = os.getenv("ZEEBE_CLIENT_ID") or os.getenv("CAMUNDA_CLIENT_ID")
-ZEEBE_CLIENT_SECRET = os.getenv("ZEEBE_CLIENT_SECRET") or os.getenv("CAMUNDA_CLIENT_SECRET")
-ZEEBE_CLUSTER_ID = os.getenv("ZEEBE_CLUSTER_ID") or os.getenv("CAMUNDA_CLUSTER_ID")
-ZEEBE_REGION = os.getenv("ZEEBE_REGION") or os.getenv("CAMUNDA_REGION")
+    # 2. Variablen direkt an den Channel übergeben (Verhindert den SettingsError)
+    channel = create_camunda_cloud_channel(
+        client_id=ZEEBE_CLIENT_ID,
+        client_secret=ZEEBE_CLIENT_SECRET,
+        cluster_id=ZEEBE_CLUSTER_ID,
+        region=ZEEBE_REGION
+    ) 
+    worker = ZeebeWorker(channel) 
 
-if ZEEBE_CLIENT_ID:
-    os.environ["ZEEBE_CLIENT_ID"] = ZEEBE_CLIENT_ID
-    os.environ["CAMUNDA_CLIENT_ID"] = ZEEBE_CLIENT_ID
+    # 1. TASK: Daten per KI aus n8n holen 
+    @worker.task(task_type="call-n8n") 
+    async def call_n8n(**kwargs): 
+        print("\n[Camunda-Worker] Task 'call-n8n' empfangen.") 
+        print(f"[DEBUG] Variablen aus Camunda: {kwargs}")
 
-if ZEEBE_CLIENT_SECRET:
-    os.environ["ZEEBE_CLIENT_SECRET"] = ZEEBE_CLIENT_SECRET
-    os.environ["CAMUNDA_CLIENT_SECRET"] = ZEEBE_CLIENT_SECRET
+        async with aiohttp.ClientSession() as session: 
+            try: 
+                data = aiohttp.FormData()
 
-if ZEEBE_CLUSTER_ID:
-    os.environ["ZEEBE_CLUSTER_ID"] = ZEEBE_CLUSTER_ID
-    os.environ["CAMUNDA_CLUSTER_ID"] = ZEEBE_CLUSTER_ID
+                # Lokales Dokumenten-Streaming (Simuliertes Camunda-SaaS-Storage-Handling)
+                fallback_path = BASE_DIR / "deine_test_rechnung.pdf"
+                print(f"[INFO] Bereite Rechnungsdatei für n8n vor...")
+                
+                if fallback_path.exists():
+                    with open(fallback_path, 'rb') as f:
+                        file_bytes = f.read()
+                    print(f"[INFO] Datei '{fallback_path.name}' erfolgreich als Binär-Stream geladen.")
+                else:
+                    print("[FEHLER] 'deine_test_rechnung.pdf' nicht im Projektverzeichnis gefunden!")
+                    raise FileNotFoundError("Keine Rechnungsdatei verfügbar.")
 
-if ZEEBE_REGION:
-    os.environ["ZEEBE_REGION"] = ZEEBE_REGION
-    os.environ["CAMUNDA_REGION"] = ZEEBE_REGION
+                # Datei als Binärfeld an n8n übergeben
+                # 'Rechnung' entspricht exakt dem Namen in deinem n8n 'Extract from File' Node!
+                data.add_field('Rechnung', file_bytes, filename='rechnung.pdf', content_type='application/pdf')
+                
+                # Optionale Metadaten mitsenden
+                data.add_field('context', json.dumps(kwargs))
 
+                print(f"[INFO] Sende Binärdaten an n8n Webhook: {N8N_WEBHOOK_URL}")
+                async with session.post(N8N_WEBHOOK_URL, data=data) as response: 
+                    result = await response.json() 
+                    print(f"[DEBUG] Antwort von n8n erhalten: {result}")
+                    
+                    if not result:
+                        raise Exception("n8n hat leere Daten zurückgegeben.")
 
-async def main():
-    print("[DEBUG] ZEEBE_CLIENT_ID geladen:", ZEEBE_CLIENT_ID is not None)
-    print("[DEBUG] ZEEBE_CLIENT_SECRET geladen:", ZEEBE_CLIENT_SECRET is not None)
-    print("[DEBUG] ZEEBE_CLUSTER_ID geladen:", ZEEBE_CLUSTER_ID)
-    print("[DEBUG] ZEEBE_REGION geladen:", ZEEBE_REGION)
+                    # Das Mapping der Felder auf die Camunda-Variablen
+                    mapped_variables = { 
+                        "id": result.get("id"), 
+                        "supplier": result.get("supplier"), 
+                        "amount": float(result.get("amount", 0)) if result.get("amount") else 0.0, 
+                        "date": result.get("date"), 
+                        "position_description": result.get("positions", [{}])[0].get("description") if result.get("positions") else None, 
+                        "position_quantity": result.get("positions", [{}])[0].get("quantity") if result.get("positions") else None, 
+                        "position_unit": result.get("positions", [{}])[0].get("unit") if result.get("positions") else None, 
+                        "position_unit_price": float(result.get("positions", [{}])[0].get("unitPrice", 0)) if result.get("positions") else 0.0, 
+                        "position_tax": result.get("positions", [{}])[0].get("tax") if result.get("positions") else None 
+                    } 
+                    print("[n8n] Mapping erfolgreich:", mapped_variables) 
+                    return mapped_variables 
+            except Exception as e: 
+                print(f"[FEHLER] n8n Aufruf fehlgeschlagen: {str(e)}") 
+                raise BusinessError("N8N_CALL_FAILED", str(e))
 
-    channel = create_camunda_cloud_channel()
-    worker = ZeebeWorker(channel)
+    # 2. TASK: Rechnung speichern 
+    @worker.task(task_type="save-invoice") 
+    async def save_invoice(id=None, supplier=None, amount=None, date=None): 
+        try: 
+            grpc_channel = grpc.insecure_channel(f"{INVOICE_HOST}:{INVOICE_PORT}") 
+            stub = invoice_pb2_grpc.InvoiceServiceStub(grpc_channel) 
+            rechnung = invoice_pb2.Invoice(id=str(id), supplier=str(supplier), amount=float(amount), date=str(date)) 
+            antwort = stub.SaveInvoice(rechnung) 
+            return {"invoice_saved": True, "invoice_message": antwort.message} 
+        except Exception as e: 
+            raise BusinessError("INVOICE_SAVE_FAILED", str(e)) 
 
-    # ------------------------------------------------------------
-    # SPRINT 6 TASK: AI-Extraktion über n8n abrufen
-    # BPMN Task Type: call-n8n
-    #
-    # Aktuell Dummy-JSON.
-    # ------------------------------------------------------------
-    @worker.task(task_type="call-n8n")
-    async def call_n8n():
-        print("\n[Camunda-Worker] Task 'call-n8n' empfangen.")
-        print("[n8n-Dummy] Simuliere extrahierte Rechnungsdaten aus PDF...")
+    # 3. TASK: Payment-Order an RabbitMQ 
+    @worker.task(task_type="send-payment-order") 
+    async def send_payment_notification(**kwargs): 
+        try: 
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST)) 
+            rabbit_channel = connection.channel() 
+            rabbit_channel.queue_declare(queue="payment_queue") 
+            rabbit_channel.basic_publish(exchange="", routing_key="payment_queue", body=json.dumps(kwargs)) 
+            connection.close() 
+            return {"payment_message_sent": True} 
+        except Exception as e: 
+            return {"payment_message_sent": False, "payment_error": str(e)} 
 
-        result = {
-            "id": "TEST-001",
-            "supplier": "Testlieferant GmbH",
-            "amount": "999.99",
-            "date": "2026-06-10",
-            "positions": [
-                {
-                    "description": "Testposition",
-                    "quantity": "1",
-                    "unit": "Stück",
-                    "unitPrice": "999.99",
-                    "tax": "19%"
-                }
-            ]
-        }
+    # Weitere Tasks 
+    @worker.task(task_type="rechnungsdaten-validieren") 
+    async def task_validation(): return {"complianceCheckNotwendig": False} 
+     
+    @worker.task(task_type="erp-system") 
+    async def task_erp(): return {"erp_erfolgreich": True} 
 
-        mapped_variables = {
-            "id": result["id"],
-            "supplier": result["supplier"],
-            "amount": result["amount"],
-            "date": result["date"],
-            "position_description": result["positions"][0]["description"],
-            "position_quantity": result["positions"][0]["quantity"],
-            "position_unit": result["positions"][0]["unit"],
-            "position_unit_price": result["positions"][0]["unitPrice"],
-            "position_tax": result["positions"][0]["tax"]
-        }
+    @worker.task(task_type="zahlung-ausführen") 
+    async def task_final(): return {} 
 
-        print("[n8n-Dummy] Gemappte Camunda-Variablen:")
-        print(json.dumps(mapped_variables, indent=2, ensure_ascii=False))
+    # DIE ALTE AUSGABE
+    print("\n" + "=" * 50) 
+    print("--- CAMUNDA WORKER GESTARTET ---") 
+    print(f"Invoice gRPC Server: {INVOICE_HOST}:{INVOICE_PORT}") 
+    print(f"RabbitMQ Host: {RABBITMQ_HOST}") 
+    print("Lausche auf Tasks aus Camunda Cloud...") 
+    print("=" * 50) 
 
-        return mapped_variables
+    await worker.work() 
 
-    # ------------------------------------------------------------
-    # TASK: Rechnung ins Invoice Service speichern
-    # BPMN Task Type: save-invoice
-    # Erwartete Variablen aus Kontrollformular:
-    # id, supplier, amount, date
-    # ------------------------------------------------------------
-    @worker.task(task_type="save-invoice")
-    async def save_invoice(id=None, supplier=None, amount=None, date=None):
-        print("\n[Camunda-Worker] Task 'save-invoice' empfangen.")
-        print("[DEBUG] id:", id)
-        print("[DEBUG] supplier:", supplier)
-        print("[DEBUG] amount:", amount)
-        print("[DEBUG] date:", date)
-
-        if not id or not supplier or amount is None or not date:
-            fehlermeldung = "Pflichtdaten fehlen: id, supplier, amount oder date"
-            print(f"[FEHLER] {fehlermeldung}")
-            raise BusinessError("INVOICE_SAVE_FAILED", fehlermeldung)
-
-        try:
-            grpc_channel = grpc.insecure_channel(f"{INVOICE_HOST}:{INVOICE_PORT}")
-            stub = invoice_pb2_grpc.InvoiceServiceStub(grpc_channel)
-
-            rechnung = invoice_pb2.Invoice(
-                id=str(id),
-                supplier=str(supplier),
-                amount=float(amount),
-                date=str(date)
-            )
-
-            print(f"[gRPC] Sende Rechnung {id} an {INVOICE_HOST}:{INVOICE_PORT} ...")
-            antwort = stub.SaveInvoice(rechnung)
-            print(f"[gRPC] Antwort vom Invoice Service: {antwort.message}")
-
-            return {
-                "invoice_saved": True,
-                "invoice_message": antwort.message,
-                "invoice_error": None
-            }
-
-        except ValueError:
-            fehlermeldung = f"amount ist keine gültige Zahl: {amount}"
-            print(f"[FEHLER] {fehlermeldung}")
-            raise BusinessError("INVOICE_SAVE_FAILED", fehlermeldung)
-
-        except grpc.RpcError as e:
-            fehlermeldung = e.details() or str(e)
-            print(f"[FEHLER] gRPC-Fehler: {fehlermeldung}")
-            raise BusinessError("INVOICE_SAVE_FAILED", fehlermeldung)
-
-        except Exception as e:
-            fehlermeldung = str(e)
-            print(f"[FEHLER] Unerwarteter Fehler: {fehlermeldung}")
-            raise BusinessError("INVOICE_SAVE_FAILED", fehlermeldung)
-
-    @worker.task(task_type="rechnungsdaten-validieren")
-    async def task_validation():
-        print("[Camunda-Worker] Task 'rechnungsdaten-validieren' empfangen.")
-        return {
-            "complianceCheckNotwendig": False
-        }
-
-    @worker.task(task_type="erp-system")
-    async def task_erp():
-        print("[Camunda-Worker] Task 'erp-system' empfangen.")
-        return {
-            "manuelleFreigabeNoetig": False,
-            "erp_erfolgreich": True
-        }
-
-    # ------------------------------------------------------------
-    # TASK: Zahlungsauftrag an Payment Service senden
-    # BPMN Task Type: send-payment-order
-    # ------------------------------------------------------------
-    @worker.task(task_type="send-payment-order")
-    async def send_payment_notification(**kwargs):
-        print("\n[Camunda-Worker] Task 'send-payment-order' empfangen.")
-        print("[DEBUG] Empfangene Variablen vom Worker:", kwargs)
-
-        invoice_id = kwargs.get("id") or kwargs.get("invoiceId") or "UNBEKANNT"
-        supplier_name = kwargs.get("supplier") or kwargs.get("Lieferant") or "N/A"
-        invoice_amount = kwargs.get("amount") or kwargs.get("Betrag") or 0.0
-        invoice_date = kwargs.get("date") or kwargs.get("Datum") or "N/A"
-
-        try:
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=RABBITMQ_HOST)
-            )
-            rabbit_channel = connection.channel()
-            rabbit_channel.queue_declare(queue="payment_queue")
-
-            zahlungs_daten = {
-                "invoiceId": invoice_id,
-                "supplier": supplier_name,
-                "amount": float(invoice_amount) if invoice_amount else 0.0,
-                "date": invoice_date
-            }
-
-            nachricht_json = json.dumps(zahlungs_daten)
-
-            rabbit_channel.basic_publish(
-                exchange="",
-                routing_key="payment_queue",
-                body=nachricht_json
-            )
-
-            print(f"[RabbitMQ] Vollständige Daten für Rechnung {invoice_id} an Queue übergeben.")
-            connection.close()
-
-            return {
-                "payment_message_sent": True,
-                "payment_error": None
-            }
-
-        except Exception as e:
-            fehlermeldung = str(e)
-            print(f"[FEHLER] RabbitMQ nicht erreichbar: {fehlermeldung}")
-            return {
-                "payment_message_sent": False,
-                "payment_error": fehlermeldung
-            }
-
-    @worker.task(task_type="zahlung-ausführen")
-    async def task_final():
-        print("[Camunda-Worker] Task 'zahlung-ausführen' empfangen.")
-        print("[Camunda-Worker] Workflow abgeschlossen.")
-        return {}
-
-    print("\n" + "=" * 50)
-    print("--- CAMUNDA WORKER GESTARTET ---")
-    print(f"Invoice gRPC Server: {INVOICE_HOST}:{INVOICE_PORT}")
-    print(f"RabbitMQ Host: {RABBITMQ_HOST}")
-    print("Lausche auf Tasks aus Camunda Cloud...")
-    print("=" * 50)
-
-    await worker.work()
-
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\nWorker manuell gestoppt.")
+if __name__ == "__main__": 
+    try: 
+        asyncio.run(main()) 
+    except KeyboardInterrupt: 
+        print("\nWorker gestoppt.")
