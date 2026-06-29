@@ -59,58 +59,122 @@ async def main():
     @worker.task(task_type="call-n8n") 
     async def call_n8n(**kwargs): 
         print("\n[Camunda-Worker] Task 'call-n8n' empfangen.") 
-        print(f"[DEBUG] Variablen aus Camunda: {kwargs}")
 
         async with aiohttp.ClientSession() as session: 
             try: 
                 data = aiohttp.FormData()
-
-                # Lokales Dokumenten-Streaming (Simuliertes Camunda-SaaS-Storage-Handling)
                 fallback_path = BASE_DIR / "deine_test_rechnung.pdf"
-                print(f"[INFO] Bereite Rechnungsdatei für n8n vor...")
                 
                 if fallback_path.exists():
                     with open(fallback_path, 'rb') as f:
                         file_bytes = f.read()
-                    print(f"[INFO] Datei '{fallback_path.name}' erfolgreich als Binär-Stream geladen.")
                 else:
-                    print("[FEHLER] 'deine_test_rechnung.pdf' nicht im Projektverzeichnis gefunden!")
                     raise FileNotFoundError("Keine Rechnungsdatei verfügbar.")
 
-                # Datei als Binärfeld an n8n übergeben
-                # 'Rechnung' entspricht exakt dem Namen in deinem n8n 'Extract from File' Node!
                 data.add_field('Rechnung', file_bytes, filename='rechnung.pdf', content_type='application/pdf')
-                
-                # Optionale Metadaten mitsenden
                 data.add_field('context', json.dumps(kwargs))
 
                 print(f"[INFO] Sende Binärdaten an n8n Webhook: {N8N_WEBHOOK_URL}")
                 async with session.post(N8N_WEBHOOK_URL, data=data) as response: 
-                    result = await response.json() 
-                    print(f"[DEBUG] Antwort von n8n erhalten: {result}")
                     
-                    if not result:
-                        raise Exception("n8n hat leere Daten zurückgegeben.")
+                    # 1. Status-Check der HTTP-Antwort
+                    if response.status != 200:
+                        error_text = await response.text()
+                        raise Exception(f"n8n antwortete mit Status {response.status}: {error_text}")
+                    
+                    # 2. Text empfangen und prüfen, ob überhaupt etwas ankam
+                    response_text = await response.text()
+                    if not response_text or response_text.strip() == "":
+                        raise Exception("n8n hat eine komplett leere Antwort zurückgegeben.")
+                    
+                    # 3. Sicher in JSON umwandeln
+                    try:
+                        result = json.loads(response_text)
+                    except json.JSONDecodeError:
+                        raise Exception(f"n8n-Antwort ist kein gültiges JSON. Inhalt: {response_text}")
 
-                    # Das Mapping der Felder auf die Camunda-Variablen
-                    mapped_variables = { 
-                        "id": result.get("id"), 
-                        "supplier": result.get("supplier"), 
-                        "amount": float(result.get("amount", 0)) if result.get("amount") else 0.0, 
-                        "date": result.get("date"), 
-                        "position_description": result.get("positions", [{}])[0].get("description") if result.get("positions") else None, 
-                        "position_quantity": result.get("positions", [{}])[0].get("quantity") if result.get("positions") else None, 
-                        "position_unit": result.get("positions", [{}])[0].get("unit") if result.get("positions") else None, 
-                        "position_unit_price": float(result.get("positions", [{}])[0].get("unitPrice", 0)) if result.get("positions") else 0.0, 
-                        "position_tax": result.get("positions", [{}])[0].get("tax") if result.get("positions") else None 
-                    } 
-                    print("[n8n] Mapping erfolgreich:", mapped_variables) 
-                    return mapped_variables 
+                    # 4. n8n kann manchmal ein JSON-Array zurückgeben; wir nutzen das erste Objekt
+                    if isinstance(result, list):
+                        if len(result) >= 1 and isinstance(result[0], dict):
+                            result = result[0]
+                        else:
+                            raise Exception(
+                                f"n8n-Antwort ist ein JSON-Array, aber ein Objekt wurde erwartet. Inhalt: {response_text}"
+                            )
+
+                    # 5. n8n kann die Daten unter 'output' oder 'response' verschachteln
+                    raw_data = result
+                    if isinstance(raw_data, dict):
+                        if "output" in raw_data and isinstance(raw_data["output"], (dict, list)):
+                            raw_data = raw_data["output"]
+                        elif "response" in raw_data and isinstance(raw_data["response"], (dict, list)):
+                            raw_data = raw_data["response"]
+
+                    if isinstance(raw_data, list):
+                        if len(raw_data) >= 1 and isinstance(raw_data[0], dict):
+                            raw_data = raw_data[0]
+                        else:
+                            raise Exception(
+                                f"n8n-Antwort enthält eine Liste ohne gültiges Objekt. Inhalt: {response_text}"
+                            )
+
+                    if not isinstance(raw_data, dict):
+                        raise Exception(
+                            f"n8n-Antwort ist kein JSON-Objekt. Inhalt: {response_text}"
+                        )
+
+                    def get_value(source, keys, default=""):
+                        for key in keys:
+                            if key in source:
+                                return source[key]
+                        return default
+
+                    # --- DATUMS-NORMALISIERUNG (DD.MM.YYYY -> YYYY-MM-DD) ---
+                    raw_date = get_value(raw_data, ["date"])
+                    normalized_date = raw_date
+                    if raw_date and isinstance(raw_date, str) and "." in raw_date:
+                        try:
+                            parts = raw_date.split(".")
+                            if len(parts) == 3:
+                                normalized_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+                        except Exception:
+                            normalized_date = raw_date
+
+                    # --- POSITIONEN ALS ECHTES ARRAY SICHERSTELLEN ---
+                    raw_positions = get_value(raw_data, ["positions"], [])
+                    clean_positions = []
+                    if isinstance(raw_positions, list):
+                        for pos in raw_positions:
+                            if isinstance(pos, dict):
+                                clean_positions.append({
+                                    "description": pos.get("description", ""),
+                                    "quantity": int(pos.get("quantity", 1)) if pos.get("quantity") else 1,
+                                    "unit": pos.get("unit", "Stk."),
+                                    "unitPrice": float(pos.get("unitPrice", 0.0)) if pos.get("unitPrice") else 0.0,
+                                    "tax": pos.get("tax", "19%")
+                                })
+
+                    # --- EXAKTES CAMUNDA-MAPPING ---
+                    camunda_variables = {
+                        "id": get_value(raw_data, ["id", "invoice_id"]),
+                        "supplier": get_value(raw_data, ["supplier", "vendor"]),
+                        "amount": float(get_value(raw_data, ["amount", "total_amount"], 0.0)) if get_value(raw_data, ["amount", "total_amount"], None) is not None else 0.0,
+                        "date": normalized_date,
+                        "positions": clean_positions
+                    }
+                    
+                    print("\n" + "="*40)
+                    print("[n8n -> CAMUNDA] DATEN ÜBERGEBEN:")
+                    print(json.dumps(camunda_variables, indent=2, ensure_ascii=False))
+                    print("="*40 + "\n")
+                    
+                    return camunda_variables
+                    
             except Exception as e: 
                 print(f"[FEHLER] n8n Aufruf fehlgeschlagen: {str(e)}") 
-                raise BusinessError("N8N_CALL_FAILED", str(e))
+                raise BusinessError("AI_EXTRACTION_FAILED", str(e))
 
-    # 2. TASK: Rechnung speichern 
+    # 2. TASK: Rechnung保存 
     @worker.task(task_type="save-invoice") 
     async def save_invoice(id=None, supplier=None, amount=None, date=None): 
         try: 
@@ -145,7 +209,7 @@ async def main():
     @worker.task(task_type="zahlung-ausführen") 
     async def task_final(): return {} 
 
-    # DIE ALTE AUSGABE
+    # DIE START-AUSGABE
     print("\n" + "=" * 50) 
     print("--- CAMUNDA WORKER GESTARTET ---") 
     print(f"Invoice gRPC Server: {INVOICE_HOST}:{INVOICE_PORT}") 
