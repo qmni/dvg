@@ -174,7 +174,7 @@ async def main():
                 print(f"[FEHLER] n8n Aufruf fehlgeschlagen: {str(e)}") 
                 raise BusinessError("AI_EXTRACTION_FAILED", str(e))
 
-    # 2. TASK: Rechnung保存 
+    # 2. TASK: Rechnung
     @worker.task(task_type="save-invoice") 
     async def save_invoice(id=None, supplier=None, amount=None, date=None): 
         try: 
